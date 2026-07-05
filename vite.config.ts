@@ -3,9 +3,9 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
-  // En producción (build para GitHub Pages) la app se sirve bajo /calculadora-pokemon/.
-  base: command === 'build' ? '/calculadora-pokemon/' : '/',
+export default defineConfig({
+  // Servido en la raíz del dominio propio (pkmncalc.jesuslorenzo.es).
+  base: '/',
   plugins: [vue()],
   resolve: {
     alias: {
@@ -16,4 +16,4 @@ export default defineConfig(({ command }) => ({
     port: 5173,
     open: true,
   },
-}))
+})
