@@ -1,0 +1,146 @@
+import { defineStore } from 'pinia'
+import { ref, watch } from 'vue'
+import type { ChampionsMon } from '@/types/pokemon'
+import type { Matchup, SavedBuild, SavedTeam } from '@/types/library'
+import { MAX_HISTORY, TEAM_SIZE } from '@/types/library'
+import { loadCollection, newId, saveCollection } from '@/services/storage'
+import { zeroBoosts, zeroStatPoints } from '@/utils/champions'
+import { DEFAULT_NATURE } from '@/utils/natures'
+
+/** Clave que identifica un enfrentamiento (para deduplicar el historial). */
+function matchupKey(m: Matchup): string {
+  return `${m.attacker.mon.name}|${m.move.name}|${m.defender.mon.name}`
+}
+
+/** Copia profunda simple de una build (rompe referencias reactivas). */
+function cloneBuild(b: SavedBuild): SavedBuild {
+  return {
+    ...b,
+    mon: { ...b.mon, types: [...b.mon.types], abilities: { ...b.mon.abilities }, baseStats: { ...b.mon.baseStats } },
+    build: { statPoints: { ...b.build.statPoints }, nature: b.build.nature },
+  }
+}
+
+/**
+ * Biblioteca del usuario: builds guardadas y equipos. Se persiste
+ * automáticamente en localStorage ante cualquier cambio.
+ */
+export const useLibraryStore = defineStore('library', () => {
+  const builds = ref<SavedBuild[]>(loadCollection<SavedBuild>('builds'))
+  const teams = ref<SavedTeam[]>(loadCollection<SavedTeam>('teams'))
+  const history = ref<Matchup[]>(loadCollection<Matchup>('history'))
+  const savedMatchups = ref<Matchup[]>(loadCollection<Matchup>('matchups'))
+
+  watch(builds, (v) => saveCollection('builds', v), { deep: true })
+  watch(teams, (v) => saveCollection('teams', v), { deep: true })
+  watch(history, (v) => saveCollection('history', v), { deep: true })
+  watch(savedMatchups, (v) => saveCollection('matchups', v), { deep: true })
+
+  /** Crea y guarda una build a partir de los datos actuales. */
+  function addBuild(data: Omit<SavedBuild, 'id'>): SavedBuild {
+    const saved: SavedBuild = { ...cloneBuild({ ...data, id: '' }), id: newId() }
+    builds.value.push(saved)
+    return saved
+  }
+
+  /** Borra una build y la elimina de todos los equipos. */
+  function deleteBuild(id: string): void {
+    builds.value = builds.value.filter((b) => b.id !== id)
+    for (const t of teams.value) t.members = t.members.filter((m) => m.id !== id)
+  }
+
+  function createTeam(name: string): SavedTeam {
+    const team: SavedTeam = { id: newId(), name, members: [] }
+    teams.value.push(team)
+    return team
+  }
+
+  /** Crea un equipo guardado a partir de una lista de builds (copias). */
+  function createTeamFrom(name: string, members: SavedBuild[]): SavedTeam {
+    const team: SavedTeam = {
+      id: newId(),
+      name,
+      members: members.slice(0, TEAM_SIZE).map(cloneBuild),
+    }
+    teams.value.push(team)
+    return team
+  }
+
+  function deleteTeam(id: string): void {
+    teams.value = teams.value.filter((t) => t.id !== id)
+  }
+
+  /** Añade una copia de la build al equipo (si hay hueco y no está ya). */
+  function addBuildToTeam(teamId: string, build: SavedBuild): boolean {
+    const team = teams.value.find((t) => t.id === teamId)
+    if (!team) return false
+    if (team.members.length >= TEAM_SIZE) return false
+    if (team.members.some((m) => m.id === build.id)) return false
+    team.members.push(cloneBuild(build))
+    return true
+  }
+
+  /** Añade un Pokémon del roster al equipo con configuración por defecto. */
+  function addMonToTeam(teamId: string, mon: ChampionsMon): boolean {
+    const team = teams.value.find((t) => t.id === teamId)
+    if (!team || team.members.length >= TEAM_SIZE) return false
+    team.members.push({
+      id: newId(),
+      name: mon.name,
+      mon,
+      build: { statPoints: zeroStatPoints(), nature: DEFAULT_NATURE },
+      item: null,
+      status: '',
+      ability: mon.abilities[0] ?? '',
+      moves: [],
+      boosts: zeroBoosts(),
+    })
+    return true
+  }
+
+  function removeMemberFromTeam(teamId: string, buildId: string): void {
+    const team = teams.value.find((t) => t.id === teamId)
+    if (team) team.members = team.members.filter((m) => m.id !== buildId)
+  }
+
+  /** Registra un enfrentamiento en el historial (dedup por combinación, tope MAX_HISTORY). */
+  function recordHistory(matchup: Matchup): void {
+    const key = matchupKey(matchup)
+    history.value = [matchup, ...history.value.filter((m) => matchupKey(m) !== key)].slice(
+      0,
+      MAX_HISTORY,
+    )
+  }
+
+  function clearHistory(): void {
+    history.value = []
+  }
+
+  /** Guarda un enfrentamiento como favorito (permanente). */
+  function saveMatchup(matchup: Matchup): void {
+    savedMatchups.value = [matchup, ...savedMatchups.value]
+  }
+
+  function deleteMatchup(id: string): void {
+    savedMatchups.value = savedMatchups.value.filter((m) => m.id !== id)
+  }
+
+  return {
+    builds,
+    teams,
+    history,
+    savedMatchups,
+    addBuild,
+    deleteBuild,
+    createTeam,
+    createTeamFrom,
+    deleteTeam,
+    addBuildToTeam,
+    addMonToTeam,
+    removeMemberFromTeam,
+    recordHistory,
+    clearHistory,
+    saveMatchup,
+    deleteMatchup,
+  }
+})
