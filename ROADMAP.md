@@ -146,31 +146,47 @@ Estado de las fases del proyecto. Marca los items a medida que se completen.
       Entusiasmo, Lupa, Polvo Brillo y Velo Arena/Manto Níveo por clima; influida por
       las suposiciones (habilidad, clima, precisión y evasión hipotéticas)
 
-## Posibles mejoras futuras
+## Pendiente — Simulador (mecánicas)
 
-- [ ] Más objetos (bayas reductoras de tipo, Chaleco Asalto en dobles, etc.)
-- [ ] Movimientos de campo avanzados (Viento Veloz, Truco Defensa) y protecciones de área
-- [ ] Cambios forzados (Rugido/Remolino) y más interacciones de habilidad
+- [ ] **Espacio Raro** (Trick Room): invierte el orden de velocidad (encaja con el
+      orden de turno ya implementado) y **Gravedad** (precisión y anclaje al suelo)
+- [ ] **Cambios forzados**: Rugido / Bramido / Remolino (sacan al rival del campo)
+- [ ] **Aguante** (Endure) y bayas/objetos ligados (sobrevivir con 1 PS)
+- [ ] **Semiinvulnerabilidad real** de Vuelo/Excavar/Buceo (hoy cargan pero no esquivan
+      durante la fase invulnerable — documentado como pendiente)
+- [ ] Más **objetos**: bayas reductoras de tipo, más bayas de curación/estado, etc.
+- [ ] Movimientos de campo extra (Viento Veloz, Truco Defensa) y más interacciones de habilidad
+- [ ] Tesoros de la Ruina / Don Floral (solo si entran en el roster de Champions)
+- [ ] **Tests del simulador**: turnos, prioridad, pantallas, protecciones, clima/terreno
+      (hoy solo hay tests del motor de daño)
 
-## Fase 3b — Específico de Pokémon Champions
+## Pendiente — Builds y equipos
 
-- [ ] Validar resultados contra la calc oficial de Showdown en modo Champions
-- [ ] Presets de reparto competitivos (32/32/2, etc.)
-- [ ] Sprites propios de megas/regionales (hoy usan el sprite de la forma base)
+- [ ] **Exportar e importar builds y equipos** (JSON / portapapeles o archivo) para
+      compartirlos y respaldarlos entre navegadores
+- [ ] Presets de reparto competitivos (32/32/2, etc.) para armar builds rápido
+
+## Pendiente — Fidelidad de datos (específico de Champions)
+
+- [ ] **Validar los resultados contra la calc oficial de Showdown** en modo Champions
+      (base de todo: confirmar que los % son exactos)
+- [ ] Sprites propios de megas/regionales (hoy usan el sprite de la forma base como respaldo)
 - [ ] Nuevas habilidades de mega exclusivas de Champions no presentes en @smogon/calc
 
-## Fase 4 — Calidad y experiencia
+## Pendiente — Calidad y experiencia
 
+- [ ] **Compartir por URL** un cálculo o un equipo (query params)
+- [ ] Diseño responsive y accesible (a11y), sobre todo el simulador en móvil
+- [ ] PWA / uso offline (manifest + service worker; los datos ya se cachean)
 - [ ] Carga diferida (`import()`) de `@smogon/calc` para aligerar el bundle inicial
-- [ ] Diseño responsive y accesible (a11y)
 - [ ] i18n (español / inglés)
-- [ ] Compartir cálculo por URL (query params)
-- [ ] PWA / uso offline
 
 ## Fase 5 — Despliegue
 
-- [ ] CI (lint + type-check + tests)
-- [ ] Deploy estático (GitHub Pages / Netlify / Vercel)
+- [x] Deploy en GitHub Pages con dominio propio (pkmncalc.jesuslorenzo.es) y HTTPS,
+      vía GitHub Actions al hacer push a la rama `production`
+- [ ] CI: lint + type-check + tests en cada push (evitar romper el deploy)
+- [ ] Silenciar el aviso de Node 20 del workflow al salir versiones nuevas de las actions
 
 ## Notas técnicas
 
