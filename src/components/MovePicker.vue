@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import type { ChampionsMove, PokemonType } from '@/types/pokemon'
 import { getMovesForMon } from '@/services/championsData'
-import { TYPE_COLORS, TYPE_LABELS } from '@/utils/typeColors'
+import { localizeMove } from '@/services/nameLocale'
+import { TYPE_COLORS, TYPE_LABELS, typeTextColor } from '@/utils/typeColors'
 import BaseModal from './BaseModal.vue'
 import TypeFilter from './TypeFilter.vue'
 
@@ -41,7 +42,11 @@ const filtered = computed(() => {
     if (onlyDamaging.value && m.category === 'status') return false
     if (typeFilter.value && m.type !== typeFilter.value) return false
     if (!q) return true
-    return m.name.toLowerCase().includes(q) || m.type.includes(q)
+    return (
+      m.name.toLowerCase().includes(q) ||
+      localizeMove(m.name).toLowerCase().includes(q) ||
+      m.type.includes(q)
+    )
   })
 })
 
@@ -65,6 +70,7 @@ function onSelect(move: ChampionsMove) {
         class="mp__search"
         type="search"
         placeholder="Buscar movimiento o tipo…"
+        aria-label="Buscar movimiento o tipo"
         autofocus
       />
       <label class="mp__toggle">
@@ -88,10 +94,10 @@ function onSelect(move: ChampionsMove) {
           :class="{ 'mp__item--selected': m.name === props.selected }"
           @click="onSelect(m)"
         >
-          <span class="mp__type" :style="{ backgroundColor: TYPE_COLORS[m.type] }">
+          <span class="mp__type" :style="{ backgroundColor: TYPE_COLORS[m.type], color: typeTextColor(m.type) }">
             {{ TYPE_LABELS[m.type] }}
           </span>
-          <span class="mp__name">{{ m.name }}</span>
+          <span class="mp__name">{{ localizeMove(m.name) }}</span>
           <span class="mp__cat">{{ categoryLabel[m.category] }}</span>
           <span class="mp__power">{{ m.power ?? '—' }}</span>
         </button>
@@ -173,11 +179,9 @@ function onSelect(move: ChampionsMove) {
 .mp__type {
   font-size: 0.65rem;
   font-weight: 700;
-  color: #fff;
   text-align: center;
   padding: 0.15rem 0;
   border-radius: 999px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
 .mp__name {

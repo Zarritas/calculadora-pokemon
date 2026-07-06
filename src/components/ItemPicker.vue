@@ -2,9 +2,14 @@
 import { computed, onMounted, ref } from 'vue'
 import type { ChampionsItem } from '@/types/pokemon'
 import { getItems } from '@/services/championsData'
+import { localizeItem } from '@/services/nameLocale'
 import BaseModal from './BaseModal.vue'
 
-const props = defineProps<{ selected?: string | null }>()
+const props = defineProps<{
+  selected?: string | null
+  /** Objetos ya usados por otros miembros del equipo (cláusula de objeto: no repetibles). */
+  taken?: string[]
+}>()
 
 const emit = defineEmits<{
   select: [item: string | null]
@@ -15,6 +20,8 @@ const items = ref<ChampionsItem[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const query = ref('')
+
+const takenSet = computed(() => new Set(props.taken ?? []))
 
 onMounted(async () => {
   try {
@@ -29,7 +36,9 @@ onMounted(async () => {
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return items.value
-  return items.value.filter((i) => i.name.toLowerCase().includes(q))
+  return items.value.filter(
+    (i) => i.name.toLowerCase().includes(q) || localizeItem(i.name).toLowerCase().includes(q),
+  )
 })
 
 function choose(name: string | null) {
@@ -45,6 +54,7 @@ function choose(name: string | null) {
       class="ip__search"
       type="search"
       placeholder="Buscar objeto…"
+      aria-label="Buscar objeto"
       autofocus
     />
 
@@ -66,11 +76,18 @@ function choose(name: string | null) {
         <button
           type="button"
           class="ip__item"
-          :class="{ 'ip__item--selected': i.name === props.selected }"
-          :title="i.description"
+          :class="{
+            'ip__item--selected': i.name === props.selected,
+            'ip__item--taken': takenSet.has(i.name),
+          }"
+          :disabled="takenSet.has(i.name)"
+          :title="takenSet.has(i.name) ? 'Ya lo lleva otro Pokémon del equipo' : i.description"
           @click="choose(i.name)"
         >
-          <span class="ip__name">{{ i.name }}</span>
+          <span class="ip__name">
+            {{ localizeItem(i.name) }}
+            <em v-if="takenSet.has(i.name)" class="ip__tag">en uso</em>
+          </span>
           <span class="ip__desc">{{ i.description }}</span>
         </button>
       </li>
@@ -135,6 +152,25 @@ function choose(name: string | null) {
 .ip__item--none {
   font-weight: 600;
   margin-bottom: 0.25rem;
+}
+
+.ip__item--taken {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ip__item--taken:hover {
+  border-color: var(--color-border);
+}
+
+.ip__tag {
+  font-style: normal;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #e0a020;
+  margin-left: 0.4rem;
 }
 
 .ip__name {

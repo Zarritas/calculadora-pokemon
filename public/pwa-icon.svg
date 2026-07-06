@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Calculadora Pokémon Champions">
+  <rect width="512" height="512" fill="#1b1d29" />
+  <g transform="translate(256 256)">
+    <clipPath id="ball">
+      <circle r="150" />
+    </clipPath>
+    <g clip-path="url(#ball)">
+      <rect x="-150" y="-150" width="300" height="150" fill="#e8253a" />
+      <rect x="-150" y="0" width="300" height="150" fill="#f4f5f7" />
+      <rect x="-150" y="-20" width="300" height="40" fill="#1b1b1b" />
+      <circle cx="-70" cy="-70" r="34" fill="#ffffff" opacity="0.28" />
+    </g>
+    <circle r="150" fill="none" stroke="#1b1b1b" stroke-width="12" />
+    <circle r="44" fill="#f4f5f7" stroke="#1b1b1b" stroke-width="12" />
+    <circle r="20" fill="#ffffff" stroke="#1b1b1b" stroke-width="7" />
+  </g>
+</svg>

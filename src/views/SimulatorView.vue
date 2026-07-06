@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import type { BoostKey, BoostSpread, ChampionsMon, ChampionsMove, Terrain, Weather } from '@/types/pokemon'
 import { BOOST_ORDER, zeroBoosts } from '@/utils/champions'
 import type { SavedBuild } from '@/types/library'
@@ -9,13 +8,16 @@ import {
   type Action,
   type BattleFormat,
   type DamageAssumptions,
+  type Difficulty,
   type SideId,
   type SlotAction,
 } from '@/stores/simulator'
 import { useBattleStore, type Side } from '@/stores/battle'
+import { chooseAiTeam } from '@/services/teamSelect'
 import { useLibraryStore } from '@/stores/library'
 import { getMoveEffect } from '@/services/moveEffects'
-import { TYPE_COLORS, TYPE_LABELS } from '@/utils/typeColors'
+import { localizeMove, localizeAbility } from '@/services/nameLocale'
+import { TYPE_COLORS, TYPE_LABELS, typeTextColor } from '@/utils/typeColors'
 import { TERRAIN_OPTIONS, WEATHER_OPTIONS } from '@/utils/field'
 
 /** Objetivos que no requieren que el jugador elija (uno mismo, área, aleatorio…). */
@@ -45,17 +47,60 @@ const library = useLibraryStore()
 
 /* ---------- Configuración ---------- */
 const useAI = ref(true)
+/** Dificultad de la IA rival (solo aplica si el rival es por IA). */
+const difficulty = ref<Difficulty>('easy')
 const fmt = ref<BattleFormat>('singles')
 const pickerFor = ref<Side | null>(null)
 const editing = ref<SavedBuild | null>(null)
+/** Bando del Pokémon que se está editando (para la cláusula de objeto). */
+const editingSide = ref<Side | null>(null)
+
+function editMember(side: Side, m: SavedBuild) {
+  editingSide.value = side
+  editing.value = m
+}
+function closeEditor() {
+  editing.value = null
+  editingSide.value = null
+}
+
+/** Objetos ya usados por el resto del equipo del Pokémon en edición. */
+const editingTakenItems = computed<string[]>(() => {
+  if (!editing.value || !editingSide.value) return []
+  const team = editingSide.value === 'ally' ? battle.ally : battle.enemy
+  return team
+    .filter((b) => b.id !== editing.value!.id)
+    .map((b) => b.item)
+    .filter((x): x is string => !!x)
+})
+
+/** Objetos repetidos dentro de un bando (viola la cláusula de objeto). */
+function duplicateItems(members: SavedBuild[]): string[] {
+  const seen = new Set<string>()
+  const dupes = new Set<string>()
+  for (const m of members) {
+    if (!m.item) continue
+    if (seen.has(m.item)) dupes.add(m.item)
+    else seen.add(m.item)
+  }
+  return [...dupes]
+}
+
+const itemClash = computed(() => ({
+  ally: duplicateItems(battle.ally),
+  enemy: duplicateItems(battle.enemy),
+}))
+const hasItemClash = computed(() => itemClash.value.ally.length > 0 || itemClash.value.enemy.length > 0)
 /** Paso del setup: armar equipos o elegir orden de combate. */
 const setupStep = ref<'teams' | 'order'>('teams')
 const allyPicks = ref<string[]>([])
 const enemyPicks = ref<string[]>([])
 
 const minPerTeam = computed(() => (fmt.value === 'doubles' ? 2 : 1))
+/** Nº de Pokémon que se llevan a cada combate (regla de Champions). */
+const BRING_COUNT = 4
 const canStart = computed(
-  () => battle.ally.length >= minPerTeam.value && battle.enemy.length >= minPerTeam.value,
+  () => battle.ally.length >= BRING_COUNT && battle.enemy.length >= BRING_COUNT,
 )
 const missingMoves = computed(
   () => [...battle.ally, ...battle.enemy].filter((m) => !m.moves || m.moves.length === 0).length,
@@ -79,7 +124,7 @@ function saveTeam(side: Side) {
 }
 /** Pasa del armado de equipos a la elección de orden. */
 function goToOrder() {
-  if (!canStart.value) return
+  if (!canStart.value || hasItemClash.value) return
   allyPicks.value = []
   enemyPicks.value = []
   setupStep.value = 'order'
@@ -87,9 +132,12 @@ function goToOrder() {
 
 function togglePick(side: Side, id: string) {
   const picks = side === 'ally' ? allyPicks : enemyPicks
-  picks.value = picks.value.includes(id)
-    ? picks.value.filter((x) => x !== id)
-    : [...picks.value, id]
+  if (picks.value.includes(id)) {
+    picks.value = picks.value.filter((x) => x !== id)
+  } else if (picks.value.length < BRING_COUNT) {
+    // No se pueden traer más de 4.
+    picks.value = [...picks.value, id]
+  }
 }
 
 function pickPosition(side: Side, id: string) {
@@ -97,17 +145,22 @@ function pickPosition(side: Side, id: string) {
   return idx === -1 ? null : idx + 1
 }
 
-/** Añade en orden los que falten del bando. */
-function useAllOf(side: Side) {
+/** ¿Ya se han elegido los 4 de este bando? (para desactivar el resto). */
+function picksFull(side: Side) {
+  return (side === 'ally' ? allyPicks : enemyPicks).value.length >= BRING_COUNT
+}
+
+/** Elige los primeros 4 del bando en orden. */
+function useFirstFour(side: Side) {
   const members = side === 'ally' ? battle.ally : battle.enemy
   const picks = side === 'ally' ? allyPicks : enemyPicks
-  picks.value = members.map((m) => m.id)
+  picks.value = members.slice(0, BRING_COUNT).map((m) => m.id)
 }
 
 const orderCanStart = computed(
   () =>
-    allyPicks.value.length >= minPerTeam.value &&
-    (useAI.value || enemyPicks.value.length >= minPerTeam.value),
+    allyPicks.value.length === BRING_COUNT &&
+    (useAI.value || enemyPicks.value.length === BRING_COUNT),
 )
 
 function buildOrdered(members: SavedBuild[], picks: string[]): SavedBuild[] {
@@ -118,8 +171,12 @@ function buildOrdered(members: SavedBuild[], picks: string[]): SavedBuild[] {
 async function startFromOrder() {
   if (!orderCanStart.value) return
   const allyBuilds = buildOrdered(battle.ally, allyPicks.value)
-  const enemyBuilds = useAI.value ? battle.enemy : buildOrdered(battle.enemy, enemyPicks.value)
-  await sim.start(allyBuilds, enemyBuilds, useAI.value, fmt.value)
+  // La IA elige sus 4 según la dificultad (estratégico en Normal/Difícil);
+  // en manual, los 4 elegidos por el jugador rival.
+  const enemyBuilds = useAI.value
+    ? chooseAiTeam(battle.enemy, allyBuilds, { difficulty: difficulty.value, doubles: fmt.value === 'doubles' })
+    : buildOrdered(battle.enemy, enemyPicks.value)
+  await sim.start(allyBuilds, enemyBuilds, useAI.value, fmt.value, difficulty.value)
   beginSelection()
   setupStep.value = 'teams'
 }
@@ -211,11 +268,12 @@ function collectedActions(): SlotAction[] {
   return picked.value.filter((p): p is SlotAction => p !== null)
 }
 
-function sideComplete() {
+async function sideComplete() {
   if (choosingSide.value === 'ally') {
     chosenAlly.value = collectedActions()
     if (sim.aiEnabled) {
-      sim.submitTurn(chosenAlly.value, sim.aiActions())
+      const enemyActions = await sim.computeAiActions()
+      sim.submitTurn(chosenAlly.value, enemyActions)
       afterSubmit()
     } else {
       startSide('enemy')
@@ -230,6 +288,9 @@ function sideComplete() {
 function beginSelection() {
   chosenAlly.value = []
   chosenEnemy.value = []
+  // La jugada de la IA no depende de lo que elijas: empieza a calcularla ya,
+  // en segundo plano, para que al enviar el turno esté lista.
+  if (sim.aiEnabled) sim.prefetchAiActions()
   startSide('ally')
 }
 
@@ -268,6 +329,7 @@ function moveDisabled(move: ChampionsMove): boolean {
   if (f.lockedMove && f.lockedMove !== move.name) return true
   if (f.itemActive && f.build.item === 'Assault Vest' && move.category === 'status') return true
   if (FIRST_TURN_ONLY.has(move.name) && f.turnsActive > 0) return true
+  if (sim.moveRestriction(f, move)) return true // Mofa / Anulación / Bis / Tormento
   return false
 }
 
@@ -513,16 +575,6 @@ watch(
   },
 )
 
-/* ---------- Presentación ---------- */
-function hpPercent(f: { hp: number; maxHp: number }) {
-  return f.maxHp > 0 ? (f.hp / f.maxHp) * 100 : 0
-}
-function hpColor(pct: number) {
-  if (pct > 50) return '#43a047'
-  if (pct > 20) return '#fbc02d'
-  return '#e53935'
-}
-
 const replaceInfo = computed(() => sim.replaceQueue[0] ?? null)
 
 /* --- Navegación por turnos (replay) --- */
@@ -553,9 +605,40 @@ function doSwitchBranch(id: string) {
   if (sim.phase === 'battle') beginSelection()
 }
 
-const shownLog = computed(() => {
-  const len = viewSnapshot.value?.logLen ?? sim.log.length
-  return sim.log.slice(0, len).slice().reverse()
+/**
+ * Registro agrupado por turno. Los límites vienen de los snapshots del store
+ * (cada uno tiene `label` — «Inicio», «Turno 1»… — y `logLen`, la longitud del
+ * log en ese punto), así que las líneas [logLen anterior, logLen actual)
+ * pertenecen a ese turno.
+ */
+const groupedLog = computed(() => {
+  const maxLen = viewSnapshot.value?.logLen ?? sim.log.length
+  const groups: { label: string; lines: string[] }[] = []
+  let prev = 0
+  for (const snap of sim.snapshots) {
+    const end = Math.min(snap.logLen, maxLen)
+    if (end > prev) groups.push({ label: snap.label, lines: sim.log.slice(prev, end) })
+    prev = snap.logLen
+    if (prev >= maxLen) break
+  }
+  return groups
+})
+
+/** Ítems del registro en orden de visualización (turno más reciente arriba, con cabecera). */
+const logItems = computed(() => {
+  type Item =
+    | { type: 'header'; text: string; key: string }
+    | { type: 'line'; text: string; key: string }
+  const items: Item[] = []
+  const groups = groupedLog.value
+  for (let g = groups.length - 1; g >= 0; g--) {
+    const grp = groups[g]
+    items.push({ type: 'header', text: grp.label, key: `h${g}` })
+    for (let i = grp.lines.length - 1; i >= 0; i--) {
+      items.push({ type: 'line', text: grp.lines[i], key: `l${g}-${i}` })
+    }
+  }
+  return items
 })
 
 const weatherLabel = computed(
@@ -606,6 +689,7 @@ function newBattle() {
             <div class="setup__actions">
               <select
                 class="setup__load"
+                :aria-label="side === 'ally' ? 'Cargar equipo guardado en tu bando' : 'Cargar equipo guardado en el rival'"
                 :disabled="!library.teams.length"
                 @change="loadTeam(side, ($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
               >
@@ -632,11 +716,18 @@ function newBattle() {
             <div v-for="m in side === 'ally' ? battle.ally : battle.enemy" :key="m.id" class="mini">
               <img :src="m.mon.sprite" :alt="m.mon.name" width="40" height="40" />
               <span>{{ m.mon.name }}</span>
-              <span v-if="!m.moves || !m.moves.length" class="mini__warn" title="Sin movimientos">⚠</span>
-              <button class="mini__edit" @click="editing = m">Editar</button>
-              <button class="mini__del" @click="battle.remove(side, m.id)">✕</button>
+              <span v-if="!m.moves || !m.moves.length" class="mini__warn" role="img" aria-label="Sin movimientos">⚠</span>
+              <button class="mini__edit" @click="editMember(side, m)">Editar</button>
+              <button class="mini__del" :aria-label="`Quitar ${m.mon.name}`" @click="battle.remove(side, m.id)">✕</button>
             </div>
-            <button class="add-btn" @click="pickerFor = side">＋ Añadir Pokémon</button>
+            <button
+              v-if="!battle.isFull(side)"
+              class="add-btn"
+              @click="pickerFor = side"
+            >
+              ＋ Añadir Pokémon
+            </button>
+            <p v-else class="setup__full">Equipo completo (máx. 6).</p>
           </div>
         </div>
       </div>
@@ -644,7 +735,7 @@ function newBattle() {
       <FieldControls :field="sim.field" />
 
       <div class="setup__foot">
-        <div class="setup__opts">
+        <div class="setup__opts" role="radiogroup" aria-label="Formato de combate">
           <span class="setup__opt-label">Formato:</span>
           <label><input v-model="fmt" type="radio" value="singles" /> Individual (1 vs 1)</label>
           <label><input v-model="fmt" type="radio" value="doubles" /> Doble (2 vs 2)</label>
@@ -653,13 +744,34 @@ function newBattle() {
           <input v-model="useAI" type="checkbox" />
           Rival por IA {{ useAI ? '(activada)' : '(manual)' }}
         </label>
-        <p v-if="fmt === 'doubles' && !canStart" class="setup__warn">
-          ⚠ El combate doble necesita al menos 2 Pokémon por bando.
+        <div v-if="useAI" class="setup__opts setup__diff" role="radiogroup" aria-label="Dificultad de la IA">
+          <span class="setup__opt-label">Dificultad:</span>
+          <label><input v-model="difficulty" type="radio" value="easy" /> Fácil</label>
+          <label><input v-model="difficulty" type="radio" value="normal" /> Normal</label>
+          <label><input v-model="difficulty" type="radio" value="hard" /> Difícil</label>
+          <span class="setup__diff-hint">
+            {{
+              difficulty === 'easy'
+                ? 'Ataca al bulto: elige el golpe de más daño.'
+                : difficulty === 'normal'
+                  ? 'Prevé tu turno (busca KO, cambios, estados).'
+                  : 'Prevé dos turnos: juega el intercambio. Tarda un poco más.'
+            }}
+          </span>
+        </div>
+        <p v-if="!canStart" class="setup__warn">
+          ⚠ Cada equipo necesita al menos 4 Pokémon: se llevan {{ BRING_COUNT }} al combate.
         </p>
         <p v-else-if="missingMoves" class="setup__warn">
           ⚠ {{ missingMoves }} Pokémon sin movimientos: no podrán atacar.
         </p>
-        <button class="start-btn" :disabled="!canStart" @click="goToOrder">
+        <p v-if="itemClash.ally.length" class="setup__warn">
+          ⚠ Tu equipo repite objeto: {{ itemClash.ally.join(', ') }}. Cada Pokémon debe llevar uno distinto.
+        </p>
+        <p v-if="itemClash.enemy.length" class="setup__warn">
+          ⚠ El equipo rival repite objeto: {{ itemClash.enemy.join(', ') }}. Cada Pokémon debe llevar uno distinto.
+        </p>
+        <button class="start-btn" :disabled="!canStart || hasItemClash" @click="goToOrder">
           Siguiente: elegir orden ▸
         </button>
       </div>
@@ -668,7 +780,7 @@ function newBattle() {
       <!-- Paso 2: orden de combate -->
       <template v-else>
         <p class="sim__hint">
-          Elige qué Pokémon combaten y en qué orden. Los primeros
+          Elige exactamente <strong>{{ BRING_COUNT }}</strong> Pokémon y su orden. Los primeros
           {{ minPerTeam }} salen al campo{{ fmt === 'doubles' ? ' (los dos activos)' : '' }}.
         </p>
 
@@ -681,7 +793,13 @@ function newBattle() {
           >
             <div class="order__head">
               <span class="setup__title">{{ side === 'ally' ? 'Tu orden' : 'Orden del rival' }}</span>
-              <button class="setup__save" @click="useAllOf(side)">Usar todos</button>
+              <span
+                class="order__count"
+                :class="{ 'order__count--ok': (side === 'ally' ? allyPicks : enemyPicks).length === BRING_COUNT }"
+              >
+                {{ (side === 'ally' ? allyPicks : enemyPicks).length }}/{{ BRING_COUNT }}
+              </span>
+              <button class="setup__save" @click="useFirstFour(side)">Elegir 4</button>
             </div>
             <div class="order__list">
               <button
@@ -689,12 +807,13 @@ function newBattle() {
                 :key="m.id"
                 class="order-mon"
                 :class="{ 'order-mon--on': pickPosition(side, m.id) !== null }"
+                :disabled="pickPosition(side, m.id) === null && picksFull(side)"
                 @click="togglePick(side, m.id)"
               >
                 <span class="order-mon__pos">{{ pickPosition(side, m.id) ?? '·' }}</span>
                 <img :src="m.mon.sprite" :alt="m.mon.name" width="40" height="40" />
                 <span class="order-mon__name">{{ m.mon.name }}</span>
-                <span v-if="!m.moves || !m.moves.length" class="mini__warn" title="Sin movimientos">⚠</span>
+                <span v-if="!m.moves || !m.moves.length" class="mini__warn" role="img" aria-label="Sin movimientos">⚠</span>
               </button>
             </div>
           </div>
@@ -712,9 +831,9 @@ function newBattle() {
     <!-- ===================== COMBATE ===================== -->
     <template v-else>
       <div v-if="viewSnapshot" class="replaybar">
-        <button :disabled="viewIndex === 0" @click="prevTurn">◂</button>
+        <button :disabled="viewIndex === 0" aria-label="Turno anterior" @click="prevTurn">◂</button>
         <span class="replaybar__label">{{ viewSnapshot.label }}</span>
-        <button :disabled="atLive" @click="nextTurn">▸</button>
+        <button :disabled="atLive" aria-label="Turno siguiente" @click="nextTurn">▸</button>
         <button v-if="!atLive" class="replaybar__live" @click="goLive">En vivo ⏭</button>
         <span v-else class="replaybar__tag">En vivo</span>
         <button v-if="!atLive && sim.phase !== 'ended'" class="replaybar__branch" @click="doCreateBranch">
@@ -723,6 +842,7 @@ function newBattle() {
         <select
           v-if="sim.branches.length > 1"
           class="replaybar__select"
+          aria-label="Cambiar de rama del combate"
           :value="sim.currentBranchId"
           @change="doSwitchBranch(($event.target as HTMLSelectElement).value)"
         >
@@ -748,11 +868,13 @@ function newBattle() {
 
       <!-- Estado del campo -->
       <div
-        v-if="viewSnapshot && (viewSnapshot.weather || viewSnapshot.terrain || hazardText(viewSnapshot.hazards.ally) || hazardText(viewSnapshot.hazards.enemy))"
+        v-if="viewSnapshot && (viewSnapshot.weather || viewSnapshot.terrain || viewSnapshot.gravity || viewSnapshot.trickRoom || hazardText(viewSnapshot.hazards.ally) || hazardText(viewSnapshot.hazards.enemy))"
         class="fieldinfo"
       >
         <span v-if="viewSnapshot.weather" class="fieldinfo__tag">☁ {{ weatherLabel }}</span>
         <span v-if="viewSnapshot.terrain" class="fieldinfo__tag">🌿 {{ terrainLabel }}</span>
+        <span v-if="viewSnapshot.gravity" class="fieldinfo__tag">🪨 Gravedad</span>
+        <span v-if="viewSnapshot.trickRoom" class="fieldinfo__tag">🌀 Espacio Raro</span>
         <span v-if="hazardText(viewSnapshot.hazards.ally)" class="fieldinfo__tag fieldinfo__tag--ally">
           🔵 {{ hazardText(viewSnapshot.hazards.ally) }}
         </span>
@@ -765,8 +887,14 @@ function newBattle() {
         Estás viendo un turno anterior. Pulsa «Ir a en vivo» para seguir jugando.
       </p>
 
+      <!-- La IA calcula su jugada -->
+      <div v-if="sim.aiThinking" class="panel panel--thinking" role="status" aria-live="polite">
+        <span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        La IA está pensando su jugada…
+      </div>
+
       <!-- Panel de acción -->
-      <div v-if="atLive && sim.phase === 'battle' && currentActive" class="panel">
+      <div v-else-if="atLive && sim.phase === 'battle' && currentActive" class="panel">
         <div class="panel__head">
           <span>{{ panelTitle }}</span>
           <div v-if="!pendingMove" class="panel__tabs">
@@ -774,8 +902,8 @@ function newBattle() {
             <label v-if="canMega" class="panel__mega">
               <input v-model="megaThisTurn" type="checkbox" /> Megaevolucionar
             </label>
-            <button :class="{ on: panelMode === 'move' }" @click="panelMode = 'move'">Movimientos</button>
-            <button :class="{ on: panelMode === 'switch' }" @click="panelMode = 'switch'">Cambiar</button>
+            <button type="button" :aria-pressed="panelMode === 'move'" :class="{ on: panelMode === 'move' }" @click="panelMode = 'move'">Movimientos</button>
+            <button type="button" :aria-pressed="panelMode === 'switch'" :class="{ on: panelMode === 'switch' }" @click="panelMode = 'switch'">Cambiar</button>
           </div>
         </div>
 
@@ -821,6 +949,7 @@ function newBattle() {
               <button
                 type="button"
                 class="assume__toggle"
+                :aria-expanded="showAssumptions"
                 :class="{ 'assume__toggle--on': showAssumptions }"
                 @click="showAssumptions = !showAssumptions"
               >
@@ -851,12 +980,13 @@ function newBattle() {
                     </span>
                     <select
                       class="assume__turnmove"
+                      :aria-label="`Movimiento supuesto de ${s.name}`"
                       :value="orderMoves[s.side + ':' + s.slot]?.name ?? ''"
                       @change="setOrderMove(s.side, s.slot, ($event.target as HTMLSelectElement).value)"
                     >
                       <option value="">— sin ataque —</option>
                       <option v-for="mv in movesOf(s.side, s.slot)" :key="mv.name" :value="mv.name">
-                        {{ mv.name }}
+                        {{ localizeMove(mv.name) }}
                       </option>
                     </select>
                     <span class="assume__turninfo">
@@ -874,7 +1004,7 @@ function newBattle() {
                   <label>
                     Hab.:
                     <select v-model="atkAbility">
-                      <option v-for="ab in atkMon.abilities" :key="ab" :value="ab">{{ ab }}</option>
+                      <option v-for="ab in atkMon.abilities" :key="ab" :value="ab">{{ localizeAbility(ab) }}</option>
                     </select>
                   </label>
                 </div>
@@ -934,7 +1064,7 @@ function newBattle() {
                     <label>
                       Hab.:
                       <select v-model="foeAbility[fv.slot]">
-                        <option v-for="ab in fv.mon.abilities" :key="ab" :value="ab">{{ ab }}</option>
+                        <option v-for="ab in fv.mon.abilities" :key="ab" :value="ab">{{ localizeAbility(ab) }}</option>
                       </select>
                     </label>
                   </div>
@@ -983,9 +1113,9 @@ function newBattle() {
               :disabled="moveDisabled(mv)"
               @click="pickMove(mv)"
             >
-              <span class="mv__type" :style="{ backgroundColor: TYPE_COLORS[mv.type] }">{{ TYPE_LABELS[mv.type] }}</span>
+              <span class="mv__type" :style="{ backgroundColor: TYPE_COLORS[mv.type], color: typeTextColor(mv.type) }">{{ TYPE_LABELS[mv.type] }}</span>
               <span class="mv__name">
-                {{ mv.name }}
+                {{ localizeMove(mv.name) }}
                 <small v-for="pv in movePreviews(mv)" :key="pv.name" class="mv__dmg">
                   <template v-if="manyFoes">{{ pv.name }}: </template>{{ pv.text }}
                 </small>
@@ -1038,8 +1168,11 @@ function newBattle() {
         <button class="start-btn" @click="newBattle">Nuevo combate</button>
       </div>
 
-      <div class="log">
-        <p v-for="(line, i) in shownLog" :key="shownLog.length - i">{{ line }}</p>
+      <div class="log" role="log" aria-live="polite" aria-label="Registro del combate">
+        <template v-for="item in logItems" :key="item.key">
+          <p v-if="item.type === 'header'" class="log__turn">{{ item.text }}</p>
+          <p v-else>{{ item.text }}</p>
+        </template>
       </div>
 
       <button v-if="sim.phase !== 'ended'" class="sim__reset" @click="newBattle">Terminar combate</button>
@@ -1053,7 +1186,12 @@ function newBattle() {
       @close="pickerFor = null"
     />
 
-    <BuildEditor v-if="editing" :build="editing" @close="editing = null" />
+    <BuildEditor
+      v-if="editing"
+      :build="editing"
+      :taken-items="editingTakenItems"
+      @close="closeEditor"
+    />
   </section>
 </template>
 
@@ -1230,11 +1368,64 @@ function newBattle() {
   margin: 0;
 }
 
+.setup__full {
+  font-size: 0.78rem;
+  opacity: 0.6;
+  margin: 0.2rem 0 0;
+  text-align: center;
+}
+
+.setup__diff-hint {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  font-weight: 500;
+  flex-basis: 100%;
+}
+
+.panel--thinking {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.thinking-dots {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.thinking-dots i {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+  animation: thinking-bounce 1s infinite ease-in-out both;
+}
+.thinking-dots i:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.thinking-dots i:nth-child(2) {
+  animation-delay: -0.16s;
+}
+@keyframes thinking-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.5);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .start-btn {
   padding: 0.7rem 1.6rem;
   border: none;
   border-radius: 8px;
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: #fff;
   font-weight: 700;
   cursor: pointer;
@@ -1271,7 +1462,19 @@ function newBattle() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   margin-bottom: 0.6rem;
+}
+
+.order__count {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #e0a020;
+}
+
+.order__count--ok {
+  color: var(--color-accent);
 }
 
 .order__list {
@@ -1297,6 +1500,15 @@ function newBattle() {
   border-color: var(--color-accent);
 }
 
+.order-mon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.order-mon:disabled:hover {
+  border-color: var(--color-border);
+}
+
 .order-mon--on {
   border-color: var(--color-accent);
   box-shadow: inset 0 0 0 1px var(--color-accent);
@@ -1317,7 +1529,7 @@ function newBattle() {
 }
 
 .order-mon--on .order-mon__pos {
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: #fff;
 }
 
@@ -1335,6 +1547,7 @@ function newBattle() {
 .replaybar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
 }
@@ -1798,11 +2011,9 @@ function newBattle() {
 .mv__type {
   font-size: 0.6rem;
   font-weight: 700;
-  color: #fff;
   text-align: center;
   padding: 0.12rem 0;
   border-radius: 999px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
 .mv__name {
@@ -1911,6 +2122,23 @@ function newBattle() {
   font-weight: 700;
 }
 
+.log .log__turn {
+  margin: 0.7rem 0 0.35rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--color-border);
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+}
+
+.log .log__turn:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 .sim__reset {
   padding: 0.5rem 1rem;
   border: 1px solid var(--color-border);
@@ -1930,6 +2158,39 @@ function newBattle() {
   .arena,
   .panel__moves {
     grid-template-columns: 1fr;
+  }
+
+  /* Controles del setup y del replay más grandes para el dedo. */
+  .setup__save,
+  .setup__clear,
+  .mini__edit {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.82rem;
+  }
+
+  .replaybar button {
+    padding: 0.45rem 0.7rem;
+    min-height: 40px;
+  }
+
+  /* Panel de "Suposiciones": inputs y selects más tocables (eran ~20px). */
+  .assume select,
+  .assume input {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .assume__stat input {
+    width: 3.4rem;
+  }
+
+  .assume__stat {
+    font-size: 0.78rem;
+  }
+
+  /* Más separación entre los +/− de stats supuestas para no pulsar el vecino. */
+  .assume__boosts {
+    gap: 0.6rem 0.7rem;
   }
 }
 </style>

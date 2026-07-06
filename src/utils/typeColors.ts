@@ -22,6 +22,24 @@ export const TYPE_COLORS: Record<PokemonType, string> = {
   fairy: '#d685ad',
 }
 
+/**
+ * Color de texto legible (negro o blanco) sobre el color del tipo, según la
+ * luminancia relativa (WCAG). Los tipos claros (Eléctrico, Hielo, Acero…) usan
+ * texto oscuro para superar el ratio de contraste 4.5:1.
+ */
+export function typeTextColor(type: PokemonType): string {
+  const hex = TYPE_COLORS[type].replace('#', '')
+  const r = parseInt(hex.slice(0, 2), 16) / 255
+  const g = parseInt(hex.slice(2, 4), 16) / 255
+  const b = parseInt(hex.slice(4, 6), 16) / 255
+  const lin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+  // Contraste con blanco vs. con negro: elige el que más contraste dé.
+  const contrastWhite = 1.05 / (luminance + 0.05)
+  const contrastBlack = (luminance + 0.05) / 0.05
+  return contrastBlack >= contrastWhite ? '#1a1a1a' : '#ffffff'
+}
+
 /** Nombre del tipo en español para mostrar. */
 export const TYPE_LABELS: Record<PokemonType, string> = {
   normal: 'Normal',

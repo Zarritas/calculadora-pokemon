@@ -1,0 +1,36 @@
+name: CI
+
+# Comprueba lint, tipos, tests y compilación en cada push y pull request,
+# para no romper el despliegue.
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Comprobación de tipos
+        run: npm run type-check
+
+      - name: Tests
+        run: npm run test:run
+
+      - name: Compilar
+        run: npm run build

@@ -22,6 +22,28 @@ import { smogonNameCandidates } from '@/utils/championsNames'
 
 const GEN = 9
 
+/**
+ * Cambios de tipo de Champions en movimientos de daño (tipo capitalizado para
+ * @smogon/calc). Solo casos concretos y de tipo fijo; no se sobrescribe en
+ * general para no romper los de tipo variable (Bola Aézer, Fuerza Telúrica…).
+ */
+const CHAMPIONS_MOVE_TYPE: Record<string, string> = {
+  'Snap Trap': 'Steel', // Planta → Acero
+}
+
+/**
+ * Reclasificaciones de Champions (flags que se AÑADEN al movimiento; @smogon/calc
+ * hace merge profundo, así que no borra los flags existentes). `slicing` lo
+ * potencia Sharpness (+50%); `sound` lo usan Punk Rock/Soundproof (aún sin efecto
+ * en nuestro motor de combate, pero correcto para la calc).
+ */
+const CHAMPIONS_MOVE_FLAGS: Record<string, { slicing?: 1; sound?: 1 }> = {
+  'Crush Claw': { slicing: 1 },
+  'Shadow Claw': { slicing: 1 },
+  'Dragon Claw': { slicing: 1 },
+  'Dragon Cheer': { sound: 1 },
+}
+
 /** Tipo de las opciones del constructor de Pokemon de @smogon/calc. */
 type CalcPokemonOptions = ConstructorParameters<typeof CalcPokemon>[2]
 
@@ -123,10 +145,58 @@ function buildCalcPokemon(c: Combatant): CalcPokemon {
 export function runCalc(input: EngineInput): EngineResult {
   const attacker = buildCalcPokemon(input.attacker)
   const defender = buildCalcPokemon(input.defender)
-  const move = new CalcMove(GEN, input.move.name, {
-    isCrit: input.isCrit,
-  } as unknown as ConstructorParameters<typeof CalcMove>[2])
-  const field = buildField(input.field, input.doubles)
+  // Usa la potencia del dataset de Champions (que difiere del estándar en varios
+  // movimientos). Solo se sobrescribe cuando es un número positivo: los de
+  // potencia variable (Bola Giro, Patada Baja…) van a 0 en el dataset y se dejan
+  // en manos de @smogon/calc, que la calcula dinámicamente.
+  const atkAbility = input.attacker.ability ?? ''
+  const moveType = input.move.type
+  const isDamaging = input.move.category !== 'status' && (input.move.power ?? 0) > 0
+
+  // Potencia base: la del dataset de Champions (solo si es > 0; los de potencia
+  // variable van a 0 y se dejan a @smogon/calc, que la calcula dinámicamente).
+  let basePower = input.move.power && input.move.power > 0 ? input.move.power : undefined
+  let typeOverride = CHAMPIONS_MOVE_TYPE[input.move.name]
+
+  // Habilidades nuevas de Champions que alteran el daño:
+  // Dragonize: los movimientos Normal pasan a Dragón y +20%.
+  if (atkAbility === 'Dragonize' && moveType === 'normal' && isDamaging) {
+    typeOverride = 'Dragon'
+    if (basePower) basePower = Math.floor(basePower * 1.2)
+  }
+  // Fire Mane: +50% a los movimientos de Fuego.
+  if (atkAbility === 'Fire Mane' && moveType === 'fire' && basePower) {
+    basePower = Math.floor(basePower * 1.5)
+  }
+
+  const overrides: { basePower?: number; type?: string; flags?: Record<string, number> } = {}
+  if (basePower !== undefined) overrides.basePower = basePower
+  if (typeOverride) overrides.type = typeOverride
+  const flagOverride = CHAMPIONS_MOVE_FLAGS[input.move.name] // reclasificaciones (Corte/Sonido)
+  if (flagOverride) overrides.flags = flagOverride
+
+  const moveOptions: { isCrit?: boolean; overrides?: typeof overrides } = { isCrit: input.isCrit }
+  if (Object.keys(overrides).length) moveOptions.overrides = overrides
+
+  const move = new CalcMove(
+    GEN,
+    input.move.name,
+    moveOptions as unknown as ConstructorParameters<typeof CalcMove>[2],
+  )
+
+  // Mega Sol: calcula los movimientos del usuario como si hubiera sol.
+  let fieldState = input.field
+  if (atkAbility === 'Mega Sol') {
+    const base: FieldState = fieldState ?? {
+      weather: '',
+      terrain: '',
+      reflect: false,
+      lightScreen: false,
+      auroraVeil: false,
+    }
+    fieldState = { ...base, weather: 'Sun' }
+  }
+  const field = buildField(fieldState, input.doubles)
 
   const result = calculate(GEN, attacker, defender, move, field)
 
@@ -165,6 +235,7 @@ function buildField(field?: FieldState, doubles?: boolean): CalcField {
     gameType,
     weather: field.weather || undefined,
     terrain: field.terrain || undefined,
+    isGravity: field.isGravity,
     attackerSide: {
       isHelpingHand: field.helpingHand,
       isBattery: field.battery,

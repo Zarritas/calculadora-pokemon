@@ -70,6 +70,30 @@ export const useLibraryStore = defineStore('library', () => {
     teams.value = teams.value.filter((t) => t.id !== id)
   }
 
+  /** Renombra un equipo (ignora nombres vacíos). */
+  function renameTeam(id: string, name: string): void {
+    const team = teams.value.find((t) => t.id === id)
+    if (team && name.trim()) team.name = name.trim()
+  }
+
+  /** Importa builds (copias con IDs nuevos, para no colisionar). Devuelve cuántas. */
+  function importBuilds(list: SavedBuild[]): number {
+    for (const b of list) builds.value.push({ ...cloneBuild(b), id: newId() })
+    return list.length
+  }
+
+  /** Importa equipos (equipo y miembros con IDs nuevos). Devuelve cuántos. */
+  function importTeams(list: SavedTeam[]): number {
+    for (const t of list) {
+      teams.value.push({
+        id: newId(),
+        name: t.name,
+        members: t.members.slice(0, TEAM_SIZE).map((m) => ({ ...cloneBuild(m), id: newId() })),
+      })
+    }
+    return list.length
+  }
+
   /** Añade una copia de la build al equipo (si hay hueco y no está ya). */
   function addBuildToTeam(teamId: string, build: SavedBuild): boolean {
     const team = teams.value.find((t) => t.id === teamId)
@@ -135,6 +159,9 @@ export const useLibraryStore = defineStore('library', () => {
     createTeam,
     createTeamFrom,
     deleteTeam,
+    renameTeam,
+    importBuilds,
+    importTeams,
     addBuildToTeam,
     addMonToTeam,
     removeMemberFromTeam,

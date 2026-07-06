@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BoostKey, BoostSpread } from '@/types/pokemon'
 import { BOOST_MAX, BOOST_ORDER } from '@/utils/champions'
+import CollapsibleCard from './CollapsibleCard.vue'
 
 const props = defineProps<{
   /** Objeto reactivo compartido del store; se muta directamente. */
@@ -22,17 +23,17 @@ function format(v: number) {
 </script>
 
 <template>
-  <div class="boosts">
-    <div class="boosts__head">
-      <span class="boosts__label">Cambios de stats</span>
+  <CollapsibleCard title="Cambios de stats">
+    <template #actions>
       <button type="button" class="boosts__reset" @click="reset">Reiniciar</button>
-    </div>
+    </template>
     <div class="boosts__rows">
       <div v-for="s in BOOST_ORDER" :key="s.key" class="boost-row">
         <span class="boost-row__label">{{ s.short }}</span>
         <button
           type="button"
           class="boost-row__btn"
+          :aria-label="`Bajar ${s.short}`"
           :disabled="boosts[s.key as BoostKey] <= -BOOST_MAX"
           @click="change(s.key as BoostKey, -1)"
         >
@@ -50,6 +51,7 @@ function format(v: number) {
         <button
           type="button"
           class="boost-row__btn"
+          :aria-label="`Subir ${s.short}`"
           :disabled="boosts[s.key as BoostKey] >= BOOST_MAX"
           @click="change(s.key as BoostKey, 1)"
         >
@@ -57,32 +59,10 @@ function format(v: number) {
         </button>
       </div>
     </div>
-  </div>
+  </CollapsibleCard>
 </template>
 
 <style scoped>
-.boosts {
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 0.7rem 0.8rem;
-  background: var(--color-surface);
-}
-
-.boosts__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.boosts__label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-}
-
 .boosts__reset {
   border: none;
   background: transparent;
@@ -140,5 +120,18 @@ function format(v: number) {
 
 .boost-row__val--down {
   color: #e53935;
+}
+
+/* En móvil, +/− más grandes (36px) para pulsar con el dedo. */
+@media (max-width: 720px) {
+  .boost-row {
+    grid-template-columns: 42px 36px 30px 36px;
+  }
+
+  .boost-row__btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.05rem;
+  }
 }
 </style>

@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import type { ChampionsMon } from '@/types/pokemon'
 import type { SavedBuild } from '@/types/library'
 import { useCalculatorStore } from '@/stores/calculator'
 import { useLibraryStore } from '@/stores/library'
+import { encodeShare, decodeShare, copyToClipboard } from '@/services/transfer'
+import { encodeMatchup, decodeMatchup } from '@/services/calcShare'
+import { t } from '@/i18n'
 import { CHAMPIONS_LEVEL } from '@/utils/champions'
 import CombatantSlot from '@/components/CombatantSlot.vue'
 import StatPointsEditor from '@/components/StatPointsEditor.vue'
@@ -74,27 +78,68 @@ watch(matchupKey, (key) => {
   }, 900)
 })
 
+/** Mensaje efímero para lectores de pantalla (región aria-live). */
+const liveMsg = ref('')
+function announce(msg: string) {
+  liveMsg.value = msg
+  setTimeout(() => (liveMsg.value = ''), 2000)
+}
+
 const justSaved = ref(false)
 function saveCurrentMatchup() {
   const m = store.currentMatchup()
   if (!m) return
   library.saveMatchup(m)
   justSaved.value = true
+  announce(t('calc.saved'))
   setTimeout(() => (justSaved.value = false), 2000)
 }
+
+/* --- Compartir el cálculo por URL --- */
+const route = useRoute()
+const router = useRouter()
+const justShared = ref(false)
+
+async function shareCalc() {
+  const m = store.currentMatchup()
+  if (!m) return
+  const code = encodeShare(encodeMatchup(m))
+  const href = router.resolve({ name: 'calculator', query: { calc: code } }).href
+  const url = `${location.origin}${location.pathname}${href}`
+  const ok = await copyToClipboard(url)
+  if (ok) {
+    justShared.value = true
+    announce(t('calc.shared'))
+    setTimeout(() => (justShared.value = false), 1500)
+  } else {
+    window.prompt('Copia este enlace del cálculo:', url)
+  }
+}
+
+// Al abrir un enlace de cálculo (?calc=), reconstruye el enfrentamiento.
+onMounted(async () => {
+  const c = route.query.calc
+  if (typeof c !== 'string' || !c) return
+  const query = { ...route.query }
+  delete query.calc
+  router.replace({ query })
+  try {
+    const m = await decodeMatchup(decodeShare(c))
+    if (m) store.applyMatchup(m)
+  } catch {
+    /* enlace inválido: se ignora */
+  }
+})
 </script>
 
 <template>
   <section class="calculator">
+    <p class="sr-only" aria-live="polite">{{ liveMsg }}</p>
     <div class="calculator__title">
-      <h1>Calculadora de daño</h1>
-      <span class="calculator__badge">Champions · Nv. {{ CHAMPIONS_LEVEL }}</span>
+      <h1>{{ t('calc.title') }}</h1>
+      <span class="calculator__badge">{{ t('calc.badge', { level: CHAMPIONS_LEVEL }) }}</span>
     </div>
-    <p class="calculator__hint">
-      Solo Pokémon, movimientos, megas y objetos disponibles en Pokémon Champions.
-      Reparte los 66 Stat Points (máx. 32 por stat) y la naturaleza. Cálculo con
-      <code>@smogon/calc</code>.
-    </p>
+    <p class="calculator__hint">{{ t('calc.hint') }}</p>
 
     <div class="calculator__combatants">
       <div class="calculator__side">
@@ -157,27 +202,30 @@ function saveCurrentMatchup() {
 
     <FieldControls :field="store.field" />
 
-    <p v-if="store.error" class="calculator__status calculator__status--error">
+    <p v-if="store.error" class="calculator__status calculator__status--error" role="alert">
       {{ store.error }}
     </p>
 
-    <template v-if="store.result">
-      <DamageResultCard
-        :result="store.result"
-        :attacker="store.attacker"
-        :defender="store.defender"
-        :move="store.move"
-      />
-      <div class="calculator__save">
-        <button type="button" class="calculator__save-btn" @click="saveCurrentMatchup">
-          {{ justSaved ? '✓ Guardado' : 'Guardar enfrentamiento' }}
-        </button>
-        <RouterLink to="/matchups" class="calculator__save-link">Ver enfrentamientos</RouterLink>
-      </div>
-    </template>
-    <p v-else class="calculator__placeholder">
-      Completa atacante, movimiento y defensor para ver el daño.
-    </p>
+    <div class="calculator__result" aria-live="polite">
+      <template v-if="store.result">
+        <DamageResultCard
+          :result="store.result"
+          :attacker="store.attacker"
+          :defender="store.defender"
+          :move="store.move"
+        />
+        <div class="calculator__save">
+          <button type="button" class="calculator__save-btn" @click="saveCurrentMatchup">
+            {{ justSaved ? t('calc.saved') : t('calc.save') }}
+          </button>
+          <button type="button" class="calculator__save-btn" @click="shareCalc">
+            {{ justShared ? t('calc.shared') : t('calc.share') }}
+          </button>
+          <RouterLink to="/matchups" class="calculator__save-link">{{ t('calc.viewMatchups') }}</RouterLink>
+        </div>
+      </template>
+      <p v-else class="calculator__placeholder">{{ t('calc.placeholder') }}</p>
+    </div>
 
     <PokemonPicker
       v-if="pickerFor"
@@ -218,7 +266,7 @@ function saveCurrentMatchup() {
   font-weight: 700;
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: #fff;
 }
 
@@ -275,7 +323,7 @@ function saveCurrentMatchup() {
 }
 
 .calculator__save-btn:hover {
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: #fff;
 }
 

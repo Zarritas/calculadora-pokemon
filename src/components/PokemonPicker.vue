@@ -79,12 +79,12 @@ function onSelectBuild(build: SavedBuild) {
 
 <template>
   <BaseModal :title="props.title ?? 'Elegir Pokémon'" @close="$emit('close')">
-    <div class="tabs">
-      <button :class="{ 'tabs--on': tab === 'roster' }" @click="tab = 'roster'">Roster</button>
-      <button :class="{ 'tabs--on': tab === 'builds' }" @click="tab = 'builds'">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" :aria-selected="tab === 'roster'" :class="{ 'tabs--on': tab === 'roster' }" @click="tab = 'roster'">Roster</button>
+      <button type="button" role="tab" :aria-selected="tab === 'builds'" :class="{ 'tabs--on': tab === 'builds' }" @click="tab = 'builds'">
         Mis builds ({{ library.builds.length }})
       </button>
-      <button :class="{ 'tabs--on': tab === 'teams' }" @click="tab = 'teams'">
+      <button type="button" role="tab" :aria-selected="tab === 'teams'" :class="{ 'tabs--on': tab === 'teams' }" @click="tab = 'teams'">
         Equipos ({{ library.teams.length }})
       </button>
     </div>
@@ -97,6 +97,7 @@ function onSelectBuild(build: SavedBuild) {
           class="picker__search"
           type="search"
           placeholder="Buscar por nombre, tipo o número…"
+          aria-label="Buscar Pokémon por nombre, tipo o número"
           autofocus
         />
         <label class="picker__toggle">
@@ -141,7 +142,7 @@ function onSelectBuild(build: SavedBuild) {
               <small>{{ b.mon.name }} · {{ b.build.nature }}</small>
             </span>
           </button>
-          <button class="saved__del" title="Borrar build" @click="library.deleteBuild(b.id)">✕</button>
+          <button class="saved__del" type="button" :aria-label="`Borrar build ${b.name}`" @click="library.deleteBuild(b.id)">✕</button>
         </li>
       </ul>
     </template>
@@ -156,7 +157,7 @@ function onSelectBuild(build: SavedBuild) {
           <header class="team__head">
             <strong>{{ t.name }}</strong>
             <span class="team__count">{{ t.members.length }}/6</span>
-            <button class="saved__del" title="Borrar equipo" @click="library.deleteTeam(t.id)">✕</button>
+            <button class="saved__del" type="button" :aria-label="`Borrar equipo ${t.name}`" @click="library.deleteTeam(t.id)">✕</button>
           </header>
           <p v-if="!t.members.length" class="team__empty">Equipo vacío.</p>
           <div v-else class="team__members">

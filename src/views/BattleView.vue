@@ -7,7 +7,7 @@ import { useLibraryStore } from '@/stores/library'
 import { useBattleStore, type Side } from '@/stores/battle'
 import { getMovesForMon } from '@/services/championsData'
 import type { PokemonType } from '@/types/pokemon'
-import { TYPE_COLORS, TYPE_LABELS } from '@/utils/typeColors'
+import { TYPE_COLORS, TYPE_LABELS, typeTextColor } from '@/utils/typeColors'
 import PokemonPicker from '@/components/PokemonPicker.vue'
 import DamageResultCard from '@/components/DamageResultCard.vue'
 import FieldControls from '@/components/FieldControls.vue'
@@ -113,6 +113,7 @@ function saveTeam(side: Side) {
           <div class="team-col__actions">
             <select
               class="team-col__load"
+              aria-label="Cargar equipo guardado en tu bando"
               :disabled="!library.teams.length"
               @change="loadTeam('ally', ($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
             >
@@ -140,7 +141,7 @@ function saveTeam(side: Side) {
               <img :src="m.mon.sprite" :alt="m.mon.name" width="48" height="48" />
               <span>{{ m.mon.name }}</span>
             </button>
-            <button class="chip__del" title="Quitar" @click="removeMember('ally', m.id)">✕</button>
+            <button class="chip__del" type="button" :aria-label="`Quitar ${m.mon.name}`" @click="removeMember('ally', m.id)">✕</button>
           </div>
           <button class="add-btn" @click="pickerFor = 'ally'">＋ Añadir Pokémon</button>
         </div>
@@ -168,7 +169,7 @@ function saveTeam(side: Side) {
               :class="{ 'move--active': store.move?.name === m.name }"
               @click="selectMove(m)"
             >
-              <span class="move__type" :style="{ backgroundColor: TYPE_COLORS[m.type] }">
+              <span class="move__type" :style="{ backgroundColor: TYPE_COLORS[m.type], color: typeTextColor(m.type) }">
                 {{ TYPE_LABELS[m.type] }}
               </span>
               <span class="move__name">{{ m.name }}</span>
@@ -179,7 +180,7 @@ function saveTeam(side: Side) {
 
         <div v-if="store.attacker" class="moves">
           <div class="moves__controls">
-            <input v-model="moveQuery" type="search" placeholder="Buscar movimiento…" />
+            <input v-model="moveQuery" type="search" placeholder="Buscar movimiento…" aria-label="Buscar movimiento" />
             <label><input v-model="onlyDamaging" type="checkbox" /> Solo daño</label>
           </div>
           <TypeFilter v-model="typeFilter" />
@@ -192,7 +193,7 @@ function saveTeam(side: Side) {
               :class="{ 'move--active': store.move?.name === m.name }"
               @click="selectMove(m)"
             >
-              <span class="move__type" :style="{ backgroundColor: TYPE_COLORS[m.type] }">
+              <span class="move__type" :style="{ backgroundColor: TYPE_COLORS[m.type], color: typeTextColor(m.type) }">
                 {{ TYPE_LABELS[m.type] }}
               </span>
               <span class="move__name">{{ m.name }}</span>
@@ -203,13 +204,15 @@ function saveTeam(side: Side) {
         </div>
         <p v-else class="moves__status">Selecciona un Pokémon aliado para ver sus movimientos.</p>
 
-        <DamageResultCard
-          v-if="store.result"
-          :result="store.result"
-          :attacker="store.attacker"
-          :defender="store.defender"
-          :move="store.move"
-        />
+        <div aria-live="polite">
+          <DamageResultCard
+            v-if="store.result"
+            :result="store.result"
+            :attacker="store.attacker"
+            :defender="store.defender"
+            :move="store.move"
+          />
+        </div>
       </div>
 
       <!-- RIVAL -->
@@ -219,6 +222,7 @@ function saveTeam(side: Side) {
           <div class="team-col__actions">
             <select
               class="team-col__load"
+              aria-label="Cargar equipo guardado en el rival"
               :disabled="!library.teams.length"
               @change="loadTeam('enemy', ($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
             >
@@ -246,7 +250,7 @@ function saveTeam(side: Side) {
               <img :src="m.mon.sprite" :alt="m.mon.name" width="48" height="48" />
               <span>{{ m.mon.name }}</span>
             </button>
-            <button class="chip__del" title="Quitar" @click="removeMember('enemy', m.id)">✕</button>
+            <button class="chip__del" type="button" :aria-label="`Quitar ${m.mon.name}`" @click="removeMember('enemy', m.id)">✕</button>
           </div>
           <button class="add-btn" @click="pickerFor = 'enemy'">＋ Añadir Pokémon</button>
         </div>
@@ -547,11 +551,9 @@ function saveTeam(side: Side) {
 .move__type {
   font-size: 0.6rem;
   font-weight: 700;
-  color: #fff;
   text-align: center;
   padding: 0.12rem 0;
   border-radius: 999px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
 .move__name {

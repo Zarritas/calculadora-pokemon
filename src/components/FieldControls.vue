@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { FieldState } from '@/types/pokemon'
 import { TERRAIN_OPTIONS, WEATHER_OPTIONS } from '@/utils/field'
+import CollapsibleCard from './CollapsibleCard.vue'
 
 /** Objeto reactivo compartido del store; se muta directamente. */
 defineProps<{ field: FieldState }>()
 </script>
 
 <template>
-  <div class="field">
-    <span class="field__title">Campo de batalla</span>
+  <CollapsibleCard class="field" title="Campo de batalla">
     <div class="field__row">
       <label class="field__control">
         Clima
@@ -33,26 +33,12 @@ defineProps<{ field: FieldState }>()
         </div>
       </div>
     </div>
-  </div>
+  </CollapsibleCard>
 </template>
 
 <style scoped>
 .field {
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 0.85rem 1rem;
-  background: var(--color-surface);
   margin-bottom: 1.5rem;
-}
-
-.field__title {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-  margin-bottom: 0.6rem;
 }
 
 .field__row {

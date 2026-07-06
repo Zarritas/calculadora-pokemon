@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import type { ChampionsMove } from '@/types/pokemon'
 import { MOVESET_SIZE } from '@/types/library'
-import { TYPE_COLORS, TYPE_LABELS } from '@/utils/typeColors'
+import { localizeMove } from '@/services/nameLocale'
+import { TYPE_COLORS, TYPE_LABELS, typeTextColor } from '@/utils/typeColors'
 import MovePicker from './MovePicker.vue'
 
 const props = defineProps<{
@@ -57,25 +58,36 @@ function onClickMove(m: ChampionsMove) {
     <span class="mse__label">Movimientos ({{ moves.length }}/{{ MOVESET_SIZE }})</span>
 
     <ul class="mse__list">
-      <li v-for="m in moves" :key="m.name">
-        <div
+      <li v-for="m in moves" :key="m.name" class="mse__row">
+        <component
+          :is="selectable ? 'button' : 'div'"
+          :type="selectable ? 'button' : undefined"
           class="mse__move"
           :class="{
             'mse__move--clickable': selectable,
             'mse__move--active': selectable && m.name === activeName,
           }"
+          :aria-pressed="selectable ? m.name === activeName : undefined"
           @click="onClickMove(m)"
         >
-          <span class="mse__type" :style="{ backgroundColor: TYPE_COLORS[m.type] }">
+          <span
+            class="mse__type"
+            :style="{ backgroundColor: TYPE_COLORS[m.type], color: typeTextColor(m.type) }"
+          >
             {{ TYPE_LABELS[m.type] }}
           </span>
-          <span class="mse__name">{{ m.name }}</span>
+          <span class="mse__name">{{ localizeMove(m.name) }}</span>
           <span class="mse__cat">{{ categoryLabel[m.category] }}</span>
           <span class="mse__pow">{{ m.power ?? '—' }}</span>
-          <button class="mse__del" type="button" title="Quitar" @click.stop="removeMove(m.name)">
-            ✕
-          </button>
-        </div>
+        </component>
+        <button
+          class="mse__del"
+          type="button"
+          :aria-label="`Quitar ${localizeMove(m.name)}`"
+          @click="removeMove(m.name)"
+        >
+          ✕
+        </button>
       </li>
     </ul>
 
@@ -125,15 +137,27 @@ function onClickMove(m: ChampionsMove) {
   gap: 0.3rem;
 }
 
+.mse__row {
+  display: grid;
+  grid-template-columns: 1fr 24px;
+  align-items: center;
+  gap: 0.3rem;
+}
+
 .mse__move {
   display: grid;
-  grid-template-columns: 54px 1fr auto 30px 24px;
+  grid-template-columns: 54px 1fr auto 30px;
   align-items: center;
   gap: 0.45rem;
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-bg);
+  /* Reset para cuando es <button> (moveset seleccionable). */
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
 .mse__move--clickable {
@@ -152,11 +176,9 @@ function onClickMove(m: ChampionsMove) {
 .mse__type {
   font-size: 0.58rem;
   font-weight: 700;
-  color: #fff;
   text-align: center;
   padding: 0.1rem 0;
   border-radius: 999px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
 .mse__name {

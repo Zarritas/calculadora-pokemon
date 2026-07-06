@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PokemonType } from '@/types/pokemon'
-import { TYPE_COLORS, TYPE_LABELS } from '@/utils/typeColors'
+import { TYPE_COLORS, TYPE_LABELS, typeTextColor } from '@/utils/typeColors'
 
 defineProps<{ modelValue: PokemonType | null }>()
 const emit = defineEmits<{ 'update:modelValue': [value: PokemonType | null] }>()
@@ -28,7 +28,8 @@ function toggle(t: PokemonType, current: PokemonType | null) {
       type="button"
       class="tf__chip"
       :class="{ 'tf__chip--dim': modelValue !== null && modelValue !== t }"
-      :style="{ backgroundColor: TYPE_COLORS[t] }"
+      :style="{ backgroundColor: TYPE_COLORS[t], color: typeTextColor(t) }"
+      :aria-pressed="modelValue === t"
       @click="toggle(t, modelValue)"
     >
       {{ TYPE_LABELS[t] }}
@@ -64,11 +65,9 @@ function toggle(t: PokemonType, current: PokemonType | null) {
   padding: 0.2rem 0.6rem;
   border: 2px solid transparent;
   border-radius: 999px;
-  color: #fff;
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
   transition:
     opacity 0.12s ease,
     transform 0.08s ease;
@@ -80,5 +79,18 @@ function toggle(t: PokemonType, current: PokemonType | null) {
 
 .tf__chip--dim {
   opacity: 0.35;
+}
+
+/* En móvil, chips más altos y con más texto para pulsar mejor. */
+@media (max-width: 720px) {
+  .tf {
+    gap: 0.4rem;
+  }
+
+  .tf__all,
+  .tf__chip {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+  }
 }
 </style>

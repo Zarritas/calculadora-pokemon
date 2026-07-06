@@ -146,46 +146,131 @@ Estado de las fases del proyecto. Marca los items a medida que se completen.
       Entusiasmo, Lupa, Polvo Brillo y Velo Arena/Manto Níveo por clima; influida por
       las suposiciones (habilidad, clima, precisión y evasión hipotéticas)
 
+## Reglas propias de Pokémon Champions ✅
+
+- [x] Estados nerfeados de Champions: **sueño** (seguro T1, 33% T2, seguro T3),
+      **congelación** (25%/turno, seguro T3), **parálisis** (12,5% de fallar)
+- [x] Movimientos de clima (Día Soleado, Danza Lluvia, Tormenta Arena, Nevada) con
+      duración 5/8 según su roca; el clima/terreno inicial dura 5 turnos (no permanente)
+- [x] Movimientos de terreno (Campo Eléctrico/Herbáceo/Psíquico/Niebla, 5/8 turnos)
+- [x] Interacciones de tipo y aterrizaje: **Respiro** (pierde Volador), **Buenazo**,
+      **Arraigo**, **Levitón**, **Anegar** (→Agua), **Maldición Silvana** (+Planta)
+- [x] Potencia de movimientos tomada del dataset de Champions (override de basePower;
+      los de potencia variable se dejan a @smogon/calc)
+- [x] Cambio de tipo puntual (Snap Trap→Acero) y reclasificaciones a Corte
+      (Sharpness las potencia) y Sonido; % de secundarios documentados por Serebii
+- [x] 6 habilidades nuevas de Champions y objetos/estados propios: **Salt Cure**
+      (residual), **Rage Fist** (potencia por golpes recibidos), Soundproof, Throat Spray
+- [x] Fuente: contrastado con Serebii (nada implementado a ciegas); los % de secundarios
+      no documentados quedan fuera hasta tener datos oficiales
+
+## IA de combate ✅
+
+- [x] Rival por **expectiminimax** (matriz de pagos por jugadas simultáneas + nodos de
+      azar por muestreo Monte Carlo sobre el motor real), NO un LLM
+- [x] Selector de dificultad: **Fácil** (voraz), **Normal** (profundidad 1), **Difícil**
+      (profundidad 2), con búsqueda troceada y **prefetch** (piensa mientras eliges)
+- [x] Selección de equipo (mejores 4 + líder) y **relevo tras KO** por emparejamiento,
+      según la dificultad
+- [x] Regla de Champions: se traen exactamente **4 Pokémon** al combate (de un equipo
+      de hasta 6); cláusula de objeto (sin objetos repetidos por equipo)
+- [x] (Fase 2 pendiente) Blindar la IA como feature de pago: mover el motor a un backend
+      (VPS) para que no se pueda extraer del bundle del navegador
+
 ## Pendiente — Simulador (mecánicas)
 
-- [ ] **Espacio Raro** (Trick Room): invierte el orden de velocidad (encaja con el
-      orden de turno ya implementado) y **Gravedad** (precisión y anclaje al suelo)
-- [ ] **Cambios forzados**: Rugido / Bramido / Remolino (sacan al rival del campo)
-- [ ] **Aguante** (Endure) y bayas/objetos ligados (sobrevivir con 1 PS)
-- [ ] **Semiinvulnerabilidad real** de Vuelo/Excavar/Buceo (hoy cargan pero no esquivan
-      durante la fase invulnerable — documentado como pendiente)
-- [ ] Más **objetos**: bayas reductoras de tipo, más bayas de curación/estado, etc.
-- [ ] Movimientos de campo extra (Viento Veloz, Truco Defensa) y más interacciones de habilidad
+- [x] **Espacio Raro** (Trick Room): invierte el orden de velocidad 5 turnos (toggle),
+      integrado en el orden de turno; indicador en la interfaz
+- [x] **Gravedad**: aterriza a todos (Tierra golpea a Voladores/Levitación), sube la
+      precisión ×5/3 y dura 5 turnos
+- [x] **Cambios forzados**: Rugido / Bramido (estado) y Cola Dragón / Llave Giro (daño)
+      sacan al rival al azar del banquillo (con Regenerador y peligros de entrada)
+- [x] **Aguante** (Endure): sobrevive con 1 PS a un golpe letal (racha de Protección)
+- [ ] Bayas/objetos ligados a sobrevivir con 1 PS (más allá de Banda Focus)
+- [x] **Semiinvulnerabilidad real** de Vuelo/Excavar/Buceo/Fuerza Fantasma: esquivan
+      durante la carga salvo los movimientos que alcanzan cada escondite (Terremoto→
+      Excavar, Surf→Buceo, Trueno/Ventisca→Vuelo…), con su daño ×2 cuando corresponde
+- [x] **Bayas reductoras de tipo** (Yache/Occa/Passho…): amortiguan un golpe supereficaz
+      del tipo y se consumen; **bayas de estado** (Lum/Zreza y por estado) curan al infligirlo
+- [x] **Niebla** (Haze): borra todos los cambios de estadísticas de ambos bandos
+- [x] Movimientos de apoyo: Aromaterapia/Campana Cura (cura estados del equipo),
+      Alivio (cura estado propio), Refugio (bloquea estados 5 turnos), Drenadoras (roba PS)
+- [x] **Volátiles de restricción**: Mofa (Taunt, sin estados), Anulación (Disable),
+      Bis (Encore, fuerza el último), Tormento (Torment, sin repetir) — con seguimiento
+      del último movimiento, bloqueo en el motor, botones desactivados en la UI y
+      filtrado en la IA
+- [ ] Interacciones de habilidad adicionales
 - [ ] Tesoros de la Ruina / Don Floral (solo si entran en el roster de Champions)
-- [ ] **Tests del simulador**: turnos, prioridad, pantallas, protecciones, clima/terreno
-      (hoy solo hay tests del motor de daño)
+- [x] **Tests del simulador**: batería de integración con Pinia real y motor de daño
+      (turnos, IA, estados, clima/terreno, aterrizaje, habilidades de Champions…)
 
 ## Pendiente — Builds y equipos
 
-- [ ] **Exportar e importar builds y equipos** (JSON / portapapeles o archivo) para
-      compartirlos y respaldarlos entre navegadores
-- [ ] Presets de reparto competitivos (32/32/2, etc.) para armar builds rápido
+- [x] **Exportar e importar builds y equipos** en **formato Pokémon Showdown/Smogon**
+      (el estándar para compartir sets): serializa a texto y parsea de vuelta. Los Stat
+      Points se muestran tal cual bajo la línea `EVs:` (sin convertir a EVs), con mapeo
+      de nombres (megas/regionales) y ajuste de movimientos al learnset de Champions
+- [x] Presets de reparto por rol (Ofensivo físico/especial, Muro físico/especial,
+      Bulk equilibrado) + Limpiar, en el editor de Stat Points
 
 ## Pendiente — Fidelidad de datos (específico de Champions)
 
 - [ ] **Validar los resultados contra la calc oficial de Showdown** en modo Champions
       (base de todo: confirmar que los % son exactos)
 - [ ] Sprites propios de megas/regionales (hoy usan el sprite de la forma base como respaldo)
-- [ ] Nuevas habilidades de mega exclusivas de Champions no presentes en @smogon/calc
+- [x] Habilidades nuevas de Champions (Piercing Drill, Dragonize, Eelevate, Mega Sol,
+      Fire Mane, Spicy Spray) implementadas
 
 ## Pendiente — Calidad y experiencia
 
-- [ ] **Compartir por URL** un cálculo o un equipo (query params)
-- [ ] Diseño responsive y accesible (a11y), sobre todo el simulador en móvil
-- [ ] PWA / uso offline (manifest + service worker; los datos ya se cachean)
-- [ ] Carga diferida (`import()`) de `@smogon/calc` para aligerar el bundle inicial
-- [ ] i18n (español / inglés)
+- [x] **Compartir por URL** un equipo (query param `s`, texto Showdown codificado en
+      base64; al abrir el enlace la app ofrece importarlo) y un **cálculo** (query param
+      `calc` en la calculadora: reconstruye atacante/defensor/movimiento/campo)
+- [~] Diseño responsive y accesible (a11y): foco visible por teclado, `prefers-reduced-motion`,
+      imágenes que no desbordan y aria-labels en botones de icono. **Pasada WCAG 2.1 AA**:
+      modales con focus trap + retorno de foco + `aria-labelledby` (`BaseModal`); fila de
+      movimiento seleccionable convertida en `<button>` (operable por teclado); color de texto
+      de los chips de tipo por luminancia (contraste); acento oscurecido `--color-accent-strong`
+      (4.5:1 con blanco) en el estado activo de la nav; regiones `aria-live`/`role` en registro
+      de combate, "IA pensando", resultado/error de daño y avisos de copiado; nombres accesibles
+      en ranges/números de SP, +/− de stats, selects (cargar equipo, rama, orden) y buscadores;
+      `role="radiogroup"` en Formato/Dificultad, `aria-pressed`/`aria-expanded` en toggles;
+      `<nav aria-label>`, skip-link al contenido y utilidad `.sr-only`. Acento oscurecido
+      `--color-accent-strong` (4.5:1) aplicado a TODOS los botones/superficies con texto blanco
+      (nav activa, badge, Empezar combate, Crear equipo, guardar, diálogos, MatchupCard).
+- [x] **Navegación móvil**: menú hamburguesa accesible (≤860px) con `aria-expanded`/`aria-controls`,
+      que despliega los enlaces como filas grandes y agrupa los iconos (GitHub/Patreon/idioma)
+      al pie; se cierra al navegar. Sustituye al scroll horizontal (enlaces ocultos/no
+      descubribles). En escritorio la nav sigue inline. **Pulido móvil**: convención
+      de breakpoints 720px (layout) / 480px (densidad); objetivos táctiles ampliados en nav,
+      cabecera/formulario de equipos (con `flex-wrap`), steppers de stats (36px), chips de tipo,
+      botones de setup/replay y panel de suposiciones del simulador; sprite reducido en slots
+      estrechos. **Secciones colapsables** (`CollapsibleCard` con `<details>/<summary>` nativos,
+      accesibles por teclado y lector de pantalla): Reparto de SP, Cambios de stats y Campo de
+      batalla se pliegan por defecto en móvil (abiertos en escritorio) para acortar el scroll.
+      Falta: prevenir el zoom de iOS al enfocar inputs pequeños (<16px) y afinar densidad en
+      tablas/editores muy compactos
+- [x] PWA / uso offline (`vite-plugin-pwa`): manifest instalable, service worker con
+      `autoUpdate` y **precache del app-shell + chunks** (~5,7 MiB, 51 entradas) para uso
+      offline tras la primera visita; icono maskable SVG (`public/pwa-icon.svg`),
+      `theme-color` y metas de iOS/Android en `index.html`
+- [x] Bundle inicial ligero (~106 kB / 41 kB gzip): las vistas son rutas diferidas y el
+      diálogo de importación se carga con `defineAsyncComponent`, así `@smogon/calc` y
+      `@pkmn/img` quedan fuera del arranque (solo se cargan al usar calc/simulador/importar)
+- [~] i18n (español / inglés): base propia sin dependencias (`src/i18n`, `t()` reactivo +
+      persistencia + detección del navegador), selector ES/EN en la barra, y traducidos la
+      navegación, el pie y la calculadora. **Nombres del juego** (movimientos/habilidades/
+      objetos) traducidos desde PokéAPI vía `nameLocale.ts` (bajo demanda + caché); aplicado
+      a movimientos en calc/builds/equipos. Falta: migrar el resto de vistas (Simulador,
+      etc.), enganchar habilidades/objetos en más sitios, y el registro de combate (store)
 
 ## Fase 5 — Despliegue
 
 - [x] Deploy en GitHub Pages con dominio propio (pkmncalc.jesuslorenzo.es) y HTTPS,
       vía GitHub Actions al hacer push a la rama `production`
-- [ ] CI: lint + type-check + tests en cada push (evitar romper el deploy)
+- [x] CI (`.github/workflows/ci.yml`): lint + type-check + tests + build en cada push
+      (main/production) y pull request, para no romper el deploy. Config flat de ESLint 9
+      (`eslint.config.js`) recuperada y código sin usar limpiado
 - [ ] Silenciar el aviso de Node 20 del workflow al salir versiones nuevas de las actions
 
 ## Notas técnicas

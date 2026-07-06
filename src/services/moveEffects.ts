@@ -1,5 +1,5 @@
 import { Dex } from '@pkmn/dex'
-import type { BoostKey, StatusCondition } from '@/types/pokemon'
+import type { BoostKey, StatusCondition, Terrain, Weather } from '@/types/pokemon'
 
 /**
  * Efectos estructurados de un movimiento, extraídos de @pkmn/dex, para que el
@@ -61,6 +61,12 @@ export interface MoveEffect {
   screen?: 'reflect' | 'lightScreen' | 'auroraVeil'
   /** Viento Afín: dobla la velocidad del bando propio 4 turnos. */
   tailwind?: boolean
+  /** Clima que invoca (Día Soleado, Danza Lluvia, Tormenta Arena, Nevada). */
+  weather?: Weather
+  /** Terreno que invoca (Campo Eléctrico, Herbáceo, Psíquico, Niebla). */
+  terrain?: Terrain
+  /** Movimiento de sonido (para Insonorizar/Soundproof y Espray Bucal/Throat Spray). */
+  sound?: boolean
   /** Campo de peligro que coloca en el lado rival. */
   hazard?: Hazard
   /** Cambios de precisión/evasión del efecto principal (self si target = self). */
@@ -135,6 +141,37 @@ const SCREEN: Record<string, MoveEffect['screen']> = {
   auroraveil: 'auroraVeil',
 }
 
+/** `weather` de @pkmn/dex → clima de Champions. */
+const WEATHER_MOVE: Record<string, Weather> = {
+  sunnyday: 'Sun',
+  desolateland: 'Sun',
+  raindance: 'Rain',
+  primordialsea: 'Rain',
+  sandstorm: 'Sand',
+  snow: 'Snow',
+  snowscape: 'Snow',
+  hail: 'Snow',
+}
+
+/** `terrain` de @pkmn/dex (normalizado a solo letras) → terreno de Champions. */
+const TERRAIN_MOVE: Record<string, Terrain> = {
+  electricterrain: 'Electric',
+  grassyterrain: 'Grassy',
+  psychicterrain: 'Psychic',
+  mistyterrain: 'Misty',
+}
+
+/**
+ * Ajustes de Champions al % de efecto secundario (la BD de @pkmn/dex trae el
+ * valor estándar). Fuente: Serebii "Updated Attacks". Ampliable a medida que se
+ * documenten más; se aplica a TODOS los secundarios del movimiento.
+ */
+const CHAMPIONS_SECONDARY_CHANCE: Record<string, number> = {
+  'Iron Head': 20, // retroceso 30% → 20%
+  Moonblast: 10, // baja At. Esp. 30% → 10%
+  'Dire Claw': 30, // estado 50% → 30%
+}
+
 const cache = new Map<string, MoveEffect | null>()
 
 export function getMoveEffect(name: string): MoveEffect | null {
@@ -146,9 +183,10 @@ export function getMoveEffect(name: string): MoveEffect | null {
     return null
   }
 
+  const chanceOverride = CHAMPIONS_SECONDARY_CHANCE[name]
   const secondariesRaw = (m.secondaries ?? (m.secondary ? [m.secondary] : [])) as any[]
   const secondaries: SecondaryEffect[] = secondariesRaw.map((s) => ({
-    chance: s.chance ?? 100,
+    chance: chanceOverride ?? s.chance ?? 100,
     status: asStatus(s.status),
     boosts: mapBoosts(s.boosts),
     selfBoosts: mapBoosts(s.self?.boosts),
@@ -173,6 +211,10 @@ export function getMoveEffect(name: string): MoveEffect | null {
     sideGuard: SIDE_GUARD[(m as { sideCondition?: string }).sideCondition ?? ''],
     screen: SCREEN[(m as { sideCondition?: string }).sideCondition ?? ''],
     tailwind: (m as { sideCondition?: string }).sideCondition === 'tailwind',
+    weather: WEATHER_MOVE[((m as { weather?: string }).weather ?? '').toLowerCase()],
+    terrain: TERRAIN_MOVE[((m as { terrain?: string }).terrain ?? '').toLowerCase().replace(/[^a-z]/g, '')],
+    // Champions reclasifica Ánimo Dragón (Dragon Cheer) como movimiento de sonido.
+    sound: !!(m.flags as { sound?: number } | undefined)?.sound || name === 'Dragon Cheer',
     hazard: HAZARDS.includes((m as { sideCondition?: string }).sideCondition as Hazard)
       ? ((m as { sideCondition?: string }).sideCondition as Hazard)
       : undefined,

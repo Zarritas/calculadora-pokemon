@@ -111,9 +111,9 @@ function submit() {
 }
 
 .sbd__btn--primary {
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: #fff;
-  border-color: var(--color-accent);
+  border-color: var(--color-accent-strong);
 }
 
 .sbd__btn--primary:disabled {
