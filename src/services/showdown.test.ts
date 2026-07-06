@@ -16,8 +16,32 @@ function mon(name: string, types: ChampionsMon['types'], abilities: string[]): C
 }
 
 // Roster y movimientos simulados (evita la descarga real del dataset).
+// Nota: la forma de Alola va ANTES que el Raichu base a propósito, para
+// reproducir el bug de orden en la resolución de nombres al importar.
 vi.mock('@/services/championsData', () => ({
-  getRoster: async () => [mon('Garchomp', ['dragon', 'ground'], ['Rough Skin', 'Sand Veil'])],
+  getRoster: async () => [
+    {
+      name: 'Alolan Raichu',
+      dexNumber: 26,
+      form: 'Regional',
+      types: ['electric', 'psychic'],
+      abilities: ['Surge Surfer'],
+      baseStats: { hp: 60, attack: 85, defense: 50, spAttack: 95, spDefense: 85, speed: 110 },
+      sprite: '',
+      spriteBase: '',
+    },
+    {
+      name: 'Raichu',
+      dexNumber: 26,
+      form: 'Base',
+      types: ['electric'],
+      abilities: ['Static'],
+      baseStats: { hp: 60, attack: 90, defense: 55, spAttack: 90, spDefense: 80, speed: 110 },
+      sprite: '',
+      spriteBase: '',
+    },
+    mon('Garchomp', ['dragon', 'ground'], ['Rough Skin', 'Sand Veil']),
+  ],
   getMove: async (name: string) => ({
     name,
     type: 'ground',
@@ -80,6 +104,20 @@ describe('parseShowdown', () => {
     expect(b.build.statPoints.speed).toBe(32)
     expect(b.build.statPoints.hp).toBe(2)
     expect((b.moves ?? []).map((m) => m.name)).toEqual(['Earthquake', 'Dragon Claw'])
+  })
+
+  it('resuelve "Raichu" al Raichu base, no a la forma de Alola', async () => {
+    const { builds } = await parseShowdown('Raichu\n- Thunderbolt')
+    expect(builds).toHaveLength(1)
+    expect(builds[0].mon.name).toBe('Raichu')
+    expect(builds[0].mon.form).toBe('Base')
+  })
+
+  it('resuelve "Raichu-Alola" a la forma regional', async () => {
+    const { builds } = await parseShowdown('Raichu-Alola\n- Thunderbolt')
+    expect(builds).toHaveLength(1)
+    expect(builds[0].mon.name).toBe('Alolan Raichu')
+    expect(builds[0].mon.form).toBe('Regional')
   })
 
   it('recoge un aviso si el Pokémon no se reconoce (y no aborta si hay otros)', async () => {
