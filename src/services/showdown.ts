@@ -174,11 +174,18 @@ export async function parseShowdown(text: string): Promise<ShowdownParseResult> 
     const set = parseBlock(block)
     if (!set.species) continue
     const wanted = norm(set.species)
-    const mon = roster.find(
-      (m) =>
-        norm(m.name) === wanted ||
-        smogonNameCandidates(m.name, m.form).some((c) => norm(c) === wanted),
-    )
+    // Resolución por prioridad para evitar que una forma regional/mega capture
+    // el nombre base: p. ej. "Alolan Raichu" tiene como candidatos
+    // ["Raichu-Alola", "Raichu"], así que "Raichu" (Kanto) debe resolverse por
+    // nombre exacto ANTES de caer en el candidato base pelado de la de Alola.
+    const mon =
+      // 1) Nombre exacto del roster (Raichu → Raichu de Kanto).
+      roster.find((m) => norm(m.name) === wanted) ??
+      // 2) Candidato Smogon principal, ya cualificado con la forma
+      //    (Raichu-Alola → Raichu de Alola).
+      roster.find((m) => norm(smogonNameCandidates(m.name, m.form)[0]) === wanted) ??
+      // 3) Último recurso: cualquier candidato (incluye el base pelado).
+      roster.find((m) => smogonNameCandidates(m.name, m.form).some((c) => norm(c) === wanted))
     if (!mon) {
       errors.push(`No se reconoció el Pokémon "${set.species}".`)
       continue
