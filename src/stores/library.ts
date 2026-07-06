@@ -12,11 +12,19 @@ function matchupKey(m: Matchup): string {
   return `${m.attacker.mon.name}|${m.move.name}|${m.defender.mon.name}`
 }
 
+/**
+ * Convierte `abilities` a array. Tolera datos antiguos corruptos guardados como
+ * objeto (`{0:'Static'}`) por un bug previo de clonado, auto-reparándolos.
+ */
+function toAbilityArray(a: unknown): string[] {
+  return Array.isArray(a) ? [...a] : Object.values((a ?? {}) as Record<string, string>)
+}
+
 /** Copia profunda simple de una build (rompe referencias reactivas). */
 function cloneBuild(b: SavedBuild): SavedBuild {
   return {
     ...b,
-    mon: { ...b.mon, types: [...b.mon.types], abilities: { ...b.mon.abilities }, baseStats: { ...b.mon.baseStats } },
+    mon: { ...b.mon, types: [...b.mon.types], abilities: toAbilityArray(b.mon.abilities), baseStats: { ...b.mon.baseStats } },
     build: { statPoints: { ...b.build.statPoints }, nature: b.build.nature },
   }
 }
