@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { SavedBuild } from '@/types/library'
 import { STAT_ORDER } from '@/utils/champions'
+import { localizeMove, localizeItem } from '@/services/nameLocale'
 import { STATUS_OPTIONS } from '@/utils/field'
 import TypeBadge from './TypeBadge.vue'
 import PokeSprite from './PokeSprite.vue'
@@ -12,9 +13,13 @@ const props = defineProps<{
   removeLabel?: string
   /** Muestra el botón de editar. */
   editable?: boolean
+  /** Muestra el botón de exportar (formato Showdown). */
+  exportable?: boolean
+  /** El botón de exportar muestra «¡Copiado!» momentáneamente. */
+  copied?: boolean
 }>()
 
-defineEmits<{ remove: []; edit: [] }>()
+defineEmits<{ remove: []; edit: []; export: [] }>()
 
 /** Reparto de Stat Points asignados (solo los > 0). */
 const spSummary = computed(() =>
@@ -47,7 +52,7 @@ const statusLabel = computed(
 
       <ul class="bcard__meta">
         <li><b>Naturaleza:</b> {{ build.build.nature }}</li>
-        <li><b>Objeto:</b> {{ build.item ?? '—' }}</li>
+        <li><b>Objeto:</b> {{ build.item ? localizeItem(build.item) : '—' }}</li>
         <li><b>Estado:</b> {{ statusLabel }}</li>
         <li>
           <b>SP:</b>
@@ -55,7 +60,7 @@ const statusLabel = computed(
           <span v-else>sin asignar</span>
         </li>
         <li v-if="build.moves && build.moves.length">
-          <b>Movs:</b> {{ build.moves.map((m) => m.name).join(', ') }}
+          <b>Movs:</b> {{ build.moves.map((m) => localizeMove(m.name)).join(', ') }}
         </li>
       </ul>
     </div>
@@ -63,6 +68,9 @@ const statusLabel = computed(
     <div class="bcard__actions">
       <button v-if="editable" class="bcard__edit" type="button" @click="$emit('edit')">
         Editar
+      </button>
+      <button v-if="exportable" class="bcard__edit" type="button" @click="$emit('export')">
+        {{ copied ? '¡Copiado!' : 'Exportar' }}
       </button>
       <button class="bcard__remove" type="button" @click="$emit('remove')">
         {{ removeLabel ?? 'Borrar' }}

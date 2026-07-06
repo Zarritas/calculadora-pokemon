@@ -1,20 +1,67 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, useId } from 'vue'
 
 const props = defineProps<{ title: string }>()
 const emit = defineEmits<{ close: [] }>()
 
+/** Id para enlazar el diálogo con su título (aria-labelledby). */
+const titleId = useId()
+/** Referencia al panel del diálogo, para atrapar y mover el foco. */
+const modalRef = ref<HTMLElement | null>(null)
+/** Elemento que tenía el foco antes de abrir, para devolvérselo al cerrar. */
+let previouslyFocused: HTMLElement | null = null
+
+/** Elementos enfocables dentro del diálogo, en orden de tabulación. */
+function focusables(): HTMLElement[] {
+  if (!modalRef.value) return []
+  return Array.from(
+    modalRef.value.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((el) => el.offsetParent !== null || el === document.activeElement)
+}
+
 function onKey(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
+  if (e.key === 'Escape') {
+    emit('close')
+    return
+  }
+  // Atrapa el foco: Tab/Shift+Tab hacen bucle dentro del diálogo.
+  if (e.key === 'Tab') {
+    const items = focusables()
+    if (items.length === 0) {
+      e.preventDefault()
+      modalRef.value?.focus()
+      return
+    }
+    const first = items[0]
+    const last = items[items.length - 1]
+    const active = document.activeElement as HTMLElement | null
+    if (e.shiftKey && (active === first || !modalRef.value?.contains(active))) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
 }
 
 onMounted(() => {
+  previouslyFocused = document.activeElement as HTMLElement | null
   document.addEventListener('keydown', onKey)
   document.body.style.overflow = 'hidden'
+  // Enfoca el primer control (o el panel) al abrir.
+  nextTick(() => {
+    const items = focusables()
+    ;(items[0] ?? modalRef.value)?.focus()
+  })
 })
 onUnmounted(() => {
   document.removeEventListener('keydown', onKey)
   document.body.style.overflow = ''
+  // Devuelve el foco a quien abrió el diálogo.
+  previouslyFocused?.focus?.()
 })
 
 // evita warning de prop sin uso; el título se pinta en el template
@@ -23,9 +70,16 @@ void props
 
 <template>
   <div class="modal__backdrop" @click.self="$emit('close')">
-    <div class="modal" role="dialog" aria-modal="true">
+    <div
+      ref="modalRef"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="titleId"
+      tabindex="-1"
+    >
       <header class="modal__header">
-        <h2>{{ title }}</h2>
+        <h2 :id="titleId">{{ title }}</h2>
         <button class="modal__close" type="button" aria-label="Cerrar" @click="$emit('close')">
           ✕
         </button>

@@ -116,4 +116,6 @@ export interface FieldState {
   steelySpirit?: boolean
   /** Prevención (Friend Guard) del aliado del defensor: reduce el daño recibido ×0.75. */
   friendGuard?: boolean
+  /** Gravedad activa: aterriza al defensor (Tierra le pega aunque sea Volador/Levitación). */
+  isGravity?: boolean
 }

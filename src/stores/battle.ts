@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import type { ChampionsMon } from '@/types/pokemon'
 import type { SavedBuild, SavedTeam } from '@/types/library'
+import { TEAM_SIZE } from '@/types/library'
 import { loadCollection, newId, saveCollection } from '@/services/storage'
 import { zeroBoosts, zeroStatPoints } from '@/utils/champions'
 import { DEFAULT_NATURE } from '@/utils/natures'
@@ -50,11 +51,18 @@ export const useBattleStore = defineStore('battle', () => {
     return side === 'ally' ? ally : enemy
   }
 
+  /** ¿Hay hueco en el bando? (tope de {@link TEAM_SIZE} Pokémon). */
+  function isFull(side: Side) {
+    return list(side).value.length >= TEAM_SIZE
+  }
+
   function addMon(side: Side, mon: ChampionsMon) {
+    if (isFull(side)) return
     list(side).value.push(memberFromMon(mon))
   }
 
   function addBuild(side: Side, build: SavedBuild) {
+    if (isFull(side)) return
     list(side).value.push(cloneMember(build))
   }
 
@@ -63,14 +71,14 @@ export const useBattleStore = defineStore('battle', () => {
     ref_.value = ref_.value.filter((m) => m.id !== id)
   }
 
-  /** Reemplaza el bando con copias de los miembros de un equipo guardado. */
+  /** Reemplaza el bando con copias de los miembros de un equipo guardado (máx. {@link TEAM_SIZE}). */
   function loadTeam(side: Side, team: SavedTeam) {
-    list(side).value = team.members.map(cloneMember)
+    list(side).value = team.members.slice(0, TEAM_SIZE).map(cloneMember)
   }
 
   function clear(side: Side) {
     list(side).value = []
   }
 
-  return { ally, enemy, addMon, addBuild, remove, loadTeam, clear }
+  return { ally, enemy, isFull, addMon, addBuild, remove, loadTeam, clear }
 })

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { clearChampionsCache } from '@/services/championsData'
+import { t } from '@/i18n'
 
 const refreshing = ref(false)
 
@@ -31,6 +32,18 @@ function refreshData() {
       Company. Todas las marcas pertenecen a sus respectivos propietarios.
     </p>
 
+    <div class="about__support">
+      <p>Si el proyecto te resulta útil y quieres apoyar su desarrollo:</p>
+      <a
+        class="about__patreon"
+        href="https://www.patreon.com/16367542/join"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {{ t('app.support') }}
+      </a>
+    </div>
+
     <div class="about__cache">
       <h2>Datos y caché</h2>
       <p>
@@ -52,6 +65,20 @@ function refreshData() {
 .about p {
   margin-bottom: 1rem;
   line-height: 1.6;
+}
+
+.about__patreon {
+  display: inline-block;
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  background: #f96854;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.about__patreon:hover {
+  background: #e14b38;
 }
 
 .about__cache {
@@ -76,7 +103,7 @@ function refreshData() {
   padding: 0.6rem 1.2rem;
   border: 1px solid var(--color-accent);
   border-radius: 8px;
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: #fff;
   font-weight: 600;
   cursor: pointer;

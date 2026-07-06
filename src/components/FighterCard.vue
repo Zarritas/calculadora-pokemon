@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { SlotView } from '@/stores/simulator'
 import type { BoostKey, StatusCondition } from '@/types/pokemon'
 import { BOOST_ORDER } from '@/utils/champions'
+import { localizeAbility, localizeItem } from '@/services/nameLocale'
 import PokeSprite from './PokeSprite.vue'
 
 const props = defineProps<{
@@ -62,8 +63,8 @@ const statusInfo = computed(() => (props.view.status ? STATUS[props.view.status]
         <span v-if="statusInfo" class="fc__status" :style="{ backgroundColor: statusInfo.color }">
           {{ statusInfo.label }}
         </span>
-        <span class="fc__ability">{{ view.ability }}</span>
-        <span v-if="view.itemActive && view.item" class="fc__item">🎒 {{ view.item }}</span>
+        <span class="fc__ability">{{ localizeAbility(view.ability) }}</span>
+        <span v-if="view.itemActive && view.item" class="fc__item">🎒 {{ localizeItem(view.item) }}</span>
         <div v-if="boosts.length" class="fc__boosts">
           <span
             v-for="b in boosts"

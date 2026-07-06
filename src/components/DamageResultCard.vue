@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { ChampionsMon, ChampionsMove } from '@/types/pokemon'
 import type { CalcResult } from '@/stores/calculator'
+import { localizeMove } from '@/services/nameLocale'
 
 const props = defineProps<{
   result: CalcResult
@@ -27,7 +28,7 @@ const barWidth = computed(() => Math.min(100, props.result.maxPercent))
   <div class="result">
     <header class="result__header">
       <span>{{ attacker?.name }}</span>
-      <span class="result__move">{{ move?.name }}</span>
+      <span class="result__move">{{ localizeMove(move?.name) }}</span>
       <span>→ {{ defender?.name }}</span>
     </header>
 

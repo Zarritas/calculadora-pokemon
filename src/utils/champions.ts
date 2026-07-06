@@ -39,6 +39,18 @@ export function zeroStatPoints(): StatSpread {
   return { hp: 0, attack: 0, defense: 0, spAttack: 0, spDefense: 0, speed: 0 }
 }
 
+/**
+ * Repartos rápidos por rol (cada uno suma exactamente {@link SP_TOTAL} y respeta
+ * el tope por stat). Atajo para no repartir a mano al armar builds.
+ */
+export const STAT_PRESETS: { label: string; sp: StatSpread }[] = [
+  { label: 'Ofensivo físico', sp: { hp: 2, attack: 32, defense: 0, spAttack: 0, spDefense: 0, speed: 32 } },
+  { label: 'Ofensivo especial', sp: { hp: 2, attack: 0, defense: 0, spAttack: 32, spDefense: 0, speed: 32 } },
+  { label: 'Muro físico', sp: { hp: 32, attack: 0, defense: 32, spAttack: 0, spDefense: 2, speed: 0 } },
+  { label: 'Muro especial', sp: { hp: 32, attack: 0, defense: 2, spAttack: 0, spDefense: 32, speed: 0 } },
+  { label: 'Bulk equilibrado', sp: { hp: 32, attack: 0, defense: 17, spAttack: 0, spDefense: 17, speed: 0 } },
+]
+
 /** Stats que admiten cambios de combate (todas menos PS), en orden de UI. */
 export const BOOST_ORDER = STAT_ORDER.filter((s) => s.key !== 'hp')
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ChampionsMon, StatusCondition } from '@/types/pokemon'
 import { STATUS_OPTIONS } from '@/utils/field'
+import { localizeAbility, localizeItem } from '@/services/nameLocale'
 import TypeBadge from './TypeBadge.vue'
 import PokeSprite from './PokeSprite.vue'
 
@@ -44,10 +45,10 @@ defineEmits<{
               :value="ability"
               @change="$emit('update:ability', ($event.target as HTMLSelectElement).value)"
             >
-              <option v-for="a in pokemon.abilities" :key="a" :value="a">{{ a }}</option>
+              <option v-for="a in pokemon.abilities" :key="a" :value="a">{{ localizeAbility(a) }}</option>
             </select>
           </label>
-          <span v-else class="slot__ability">Hab.: {{ pokemon.abilities[0] }}</span>
+          <span v-else class="slot__ability">Hab.: {{ localizeAbility(pokemon.abilities[0]) }}</span>
           <div class="slot__buttons">
             <button type="button" class="slot__change" @click="$emit('pick')">Cambiar</button>
             <button type="button" class="slot__change" @click="$emit('save')">Guardar build</button>
@@ -62,7 +63,7 @@ defineEmits<{
         @click="$emit('pickItem')"
       >
         <span class="slot__item-label">Objeto</span>
-        <span class="slot__item-value">{{ item ?? 'Sin objeto' }}</span>
+        <span class="slot__item-value">{{ item ? localizeItem(item) : 'Sin objeto' }}</span>
       </button>
       <p v-else class="slot__item slot__item--mega">Mega · piedra equipada</p>
 
@@ -139,6 +140,9 @@ defineEmits<{
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  /* Permite que el contenido se encoja en vez de desbordar junto al sprite. */
+  min-width: 0;
+  flex: 1;
 }
 
 .slot__name {
@@ -252,5 +256,18 @@ defineEmits<{
   color: var(--color-text);
   padding: 0.25rem 0.4rem;
   font-size: 0.82rem;
+}
+
+/* En móvil el sprite ocupa menos para dejar sitio al nombre/tipos/botones. */
+@media (max-width: 480px) {
+  .slot__filled {
+    gap: 0.7rem;
+    padding: 0.7rem;
+  }
+
+  .slot__img {
+    width: 80px;
+    height: 80px;
+  }
 }
 </style>

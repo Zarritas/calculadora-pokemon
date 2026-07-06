@@ -181,6 +181,70 @@ describe('runCalc (motor @smogon/calc + dataset Champions)', () => {
     expect(helped.maxDamage).toBeGreaterThan(normal.maxDamage)
   })
 
+  it('usa la potencia del dataset de Champions (override de basePower)', () => {
+    const attacker = combatant(mon({ name: 'Tauros', types: ['normal'], baseStats: { hp: 75, attack: 100, defense: 95, spAttack: 40, spDefense: 70, speed: 110 } }), { attack: 32 }, 'Adamant')
+    const defender = combatant(mon())
+    const base = { attacker, defender }
+    // Mismo movimiento con dos potencias distintas → más potencia, más daño.
+    const weak = runCalc({ ...base, move: move({ name: 'Body Slam', type: 'normal', category: 'physical', power: 85 }) })
+    const strong = runCalc({ ...base, move: move({ name: 'Body Slam', type: 'normal', category: 'physical', power: 120 }) })
+    expect(strong.maxDamage).toBeGreaterThan(weak.maxDamage)
+  })
+
+  it('no rompe los movimientos de potencia variable (potencia 0 → la calcula @smogon/calc)', () => {
+    const attacker = combatant(mon({ name: 'Machamp', types: ['fighting'], baseStats: { hp: 90, attack: 130, defense: 80, spAttack: 65, spDefense: 85, speed: 55 } }), { attack: 32 }, 'Adamant')
+    // Patada Baja: potencia 0 en el dataset (variable por peso). Debe seguir haciendo daño.
+    const r = runCalc({ attacker, defender: combatant(mon()), move: move({ name: 'Low Kick', type: 'fighting', category: 'physical', power: 0 }) })
+    expect(r.maxDamage).toBeGreaterThan(0)
+  })
+
+  it('Fire Mane (habilidad de Champions) potencia los movimientos de Fuego', () => {
+    const charizard = mon({ name: 'Charizard', types: ['fire', 'flying'] })
+    const base = { defender: combatant(mon()), move: move({ name: 'Flamethrower', type: 'fire', category: 'special', power: 90 }) }
+    const normal = runCalc({ attacker: combatant(charizard, { spAttack: 32 }, 'Modest'), ...base })
+    const fireMane = runCalc({ attacker: { ...combatant(charizard, { spAttack: 32 }, 'Modest'), ability: 'Fire Mane' }, ...base })
+    expect(fireMane.maxDamage).toBeGreaterThan(normal.maxDamage)
+  })
+
+  it('Dragonize (habilidad de Champions) convierte los Normal en Dragón', () => {
+    const attacker = mon({ name: 'Dragonite', types: ['dragon', 'flying'], baseStats: { hp: 91, attack: 134, defense: 95, spAttack: 100, spDefense: 100, speed: 80 } })
+    const dragonDef = mon({ name: 'Salamence', types: ['dragon', 'flying'], baseStats: { hp: 95, attack: 135, defense: 80, spAttack: 110, spDefense: 80, speed: 100 } })
+    const bodySlam = move({ name: 'Body Slam', type: 'normal', category: 'physical', power: 85 })
+    const normal = runCalc({ attacker: combatant(attacker, { attack: 32 }, 'Adamant'), defender: combatant(dragonDef), move: bodySlam })
+    // Con Dragonize, Placaje se vuelve Dragón (×2 vs Dragón) y +20% → mucho más daño.
+    const dragonized = runCalc({ attacker: { ...combatant(attacker, { attack: 32 }, 'Adamant'), ability: 'Dragonize' }, defender: combatant(dragonDef), move: bodySlam })
+    expect(dragonized.maxDamage).toBeGreaterThan(normal.maxDamage)
+  })
+
+  it('Garra Dragón es de Corte en Champions: Sharpness la potencia (×1.5)', () => {
+    const garchomp = mon({ name: 'Garchomp', types: ['dragon', 'ground'], baseStats: { hp: 108, attack: 130, defense: 95, spAttack: 80, spDefense: 85, speed: 102 } })
+    const move2 = move({ name: 'Dragon Claw', type: 'dragon', category: 'physical', power: 80 })
+    const defender = combatant(mon())
+    const plain = runCalc({ attacker: combatant(garchomp, { attack: 32 }, 'Adamant'), defender, move: move2 })
+    const sharp = runCalc({ attacker: { ...combatant(garchomp, { attack: 32 }, 'Adamant'), ability: 'Sharpness' }, defender, move: move2 })
+    // Sin el flag de Corte (estándar) Sharpness no la tocaría; con él, ×1.5.
+    expect(sharp.maxDamage).toBeGreaterThan(plain.maxDamage)
+  })
+
+  it('Snap Trap usa el tipo Acero de Champions (no Planta)', () => {
+    const attacker = combatant(mon({ name: 'Machamp', types: ['fighting'], baseStats: { hp: 90, attack: 130, defense: 80, spAttack: 65, spDefense: 85, speed: 55 } }), { attack: 32 }, 'Adamant')
+    const snapTrap = { name: 'Snap Trap', type: 'grass' as const, category: 'physical' as const, power: 35, accuracy: 100, pp: 15, priority: 0 }
+    const vsWater = runCalc({ attacker, defender: combatant(mon({ name: 'Vaporeon', types: ['water'], baseStats: { hp: 130, attack: 65, defense: 60, spAttack: 110, spDefense: 95, speed: 65 } })), move: snapTrap })
+    const vsNormal = runCalc({ attacker, defender: combatant(mon({ name: 'Tauros', types: ['normal'], baseStats: { hp: 75, attack: 100, defense: 95, spAttack: 40, spDefense: 70, speed: 110 } })), move: snapTrap })
+    // Acero resiste Agua (×0.5) pero es neutral vs Normal → pega menos al Agua.
+    // (Si fuera Planta sería al revés: ×2 vs Agua.)
+    expect(vsWater.maxDamage).toBeLessThan(vsNormal.maxDamage)
+  })
+
+  it('Vaho Gélido (Freeze-Dry) es supereficaz contra Agua (mecánica de @smogon/calc)', () => {
+    const attacker = combatant(mon({ name: 'Articuno', types: ['ice', 'flying'] }), { spAttack: 32 }, 'Modest')
+    const vaporeon = combatant(mon({ name: 'Vaporeon', types: ['water'], baseStats: { hp: 130, attack: 65, defense: 60, spAttack: 110, spDefense: 95, speed: 65 } }))
+    const iceBeam = runCalc({ attacker, defender: vaporeon, move: move({ name: 'Ice Beam', type: 'ice', category: 'special', power: 90 }) })
+    const freezeDry = runCalc({ attacker, defender: vaporeon, move: move({ name: 'Freeze-Dry', type: 'ice', category: 'special', power: 70 }) })
+    // Rayo Hielo es ×0.5 vs Agua; Vaho Gélido ×2 → pega mucho más pese a menos potencia.
+    expect(freezeDry.maxDamage).toBeGreaterThan(iceBeam.maxDamage)
+  })
+
   it('la Pantalla de Luz reduce el daño especial', () => {
     const charizard = mon({ name: 'Charizard', types: ['fire', 'flying'] })
     const base = {

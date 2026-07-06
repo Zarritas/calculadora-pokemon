@@ -141,8 +141,8 @@ const secondaryLabel = computed(() => (props.secondary === 'delete' ? 'Borrar' :
 }
 
 .mc__btn--primary {
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: #fff;
-  border-color: var(--color-accent);
+  border-color: var(--color-accent-strong);
 }
 </style>
