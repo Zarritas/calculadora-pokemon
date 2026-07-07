@@ -108,7 +108,8 @@ function saveTeam(side: Side) {
 
     <div class="battle__grid">
       <!-- ALIADO -->
-      <div class="team-col team-col--ally">
+      <div class="battle__col">
+        <div class="team-col team-col--ally">
         <div class="team-col__head">
           <span class="team-col__title">Tu equipo ({{ battle.ally.length }})</span>
           <div class="team-col__actions">
@@ -146,6 +147,15 @@ function saveTeam(side: Side) {
           </div>
           <button class="add-btn" @click="pickerFor = 'ally'">＋ Añadir Pokémon</button>
         </div>
+        </div>
+
+        <!-- Cambios de stats del atacante activo, en un recuadro bajo su equipo. -->
+        <BoostsEditor
+          v-if="store.attacker"
+          class="team-col__boosts"
+          :boosts="store.attackerBoosts"
+          title="Cambios de stats · Atacante"
+        />
       </div>
 
       <!-- CENTRO -->
@@ -217,7 +227,8 @@ function saveTeam(side: Side) {
       </div>
 
       <!-- RIVAL -->
-      <div class="team-col team-col--enemy">
+      <div class="battle__col">
+        <div class="team-col team-col--enemy">
         <div class="team-col__head">
           <span class="team-col__title">Rival ({{ battle.enemy.length }})</span>
           <div class="team-col__actions">
@@ -255,21 +266,16 @@ function saveTeam(side: Side) {
           </div>
           <button class="add-btn" @click="pickerFor = 'enemy'">＋ Añadir Pokémon</button>
         </div>
-      </div>
-    </div>
+        </div>
 
-    <!-- Cambios de stats (boosts) de cada combatiente activo; afectan al daño. -->
-    <div v-if="store.attacker || store.defender" class="battle__boosts">
-      <BoostsEditor
-        v-if="store.attacker"
-        :boosts="store.attackerBoosts"
-        title="Cambios de stats · Atacante"
-      />
-      <BoostsEditor
-        v-if="store.defender"
-        :boosts="store.defenderBoosts"
-        title="Cambios de stats · Rival"
-      />
+        <!-- Cambios de stats del rival activo, en un recuadro bajo su equipo. -->
+        <BoostsEditor
+          v-if="store.defender"
+          class="team-col__boosts"
+          :boosts="store.defenderBoosts"
+          title="Cambios de stats · Rival"
+        />
+      </div>
     </div>
 
     <FieldControls :field="store.field" />
@@ -298,13 +304,11 @@ function saveTeam(side: Side) {
   margin-bottom: 1.5rem;
 }
 
-/* Cambios de stats bajo los equipos: atacante y rival lado a lado. */
-.battle__boosts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* Cada celda de la rejilla apila su equipo y, debajo, su recuadro de boosts. */
+.battle__col {
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
-  align-items: start;
-  margin-bottom: 1.5rem;
 }
 
 .team-col {
@@ -597,8 +601,7 @@ function saveTeam(side: Side) {
 }
 
 @media (max-width: 860px) {
-  .battle__grid,
-  .battle__boosts {
+  .battle__grid {
     grid-template-columns: 1fr;
   }
 }
