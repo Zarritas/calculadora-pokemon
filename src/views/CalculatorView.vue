@@ -138,14 +138,20 @@ onMounted(async () => {
     <div class="calculator__title">
       <h1>{{ t('calc.title') }}</h1>
       <span class="calculator__badge">{{ t('calc.badge', { level: CHAMPIONS_LEVEL }) }}</span>
-      <button
-        v-if="store.attacker || store.defender"
-        type="button"
-        class="calculator__clear"
-        @click="store.reset()"
-      >
-        {{ t('calc.clear') }}
-      </button>
+      <div v-if="store.attacker || store.defender" class="calculator__actions">
+        <button
+          v-if="store.attacker && store.defender"
+          type="button"
+          class="calculator__swap"
+          :title="t('calc.swap')"
+          @click="store.swapSides()"
+        >
+          {{ t('calc.swap') }}
+        </button>
+        <button type="button" class="calculator__clear" @click="store.reset()">
+          {{ t('calc.clear') }}
+        </button>
+      </div>
     </div>
     <p class="calculator__hint">{{ t('calc.hint') }}</p>
 
@@ -281,8 +287,14 @@ onMounted(async () => {
   color: #fff;
 }
 
-.calculator__clear {
+.calculator__actions {
   margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calculator__swap,
+.calculator__clear {
   padding: 0.4rem 0.9rem;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -291,6 +303,11 @@ onMounted(async () => {
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
+}
+
+.calculator__swap:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .calculator__clear:hover {

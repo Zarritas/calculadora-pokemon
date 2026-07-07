@@ -219,6 +219,20 @@ export const useCalculatorStore = defineStore('calculator', () => {
     Object.assign(field, m.field)
   }
 
+  /**
+   * Intercambia atacante y defensor (con objeto, estado, habilidad, moveset y
+   * cambios de stats). Sirve para el cálculo a la inversa: qué daño te haría el
+   * rival. El movimiento activo pasa a ser el primero del nuevo atacante.
+   */
+  function swapSides() {
+    const a = currentBuildData('attacker')
+    const d = currentBuildData('defender')
+    if (d) applyBuild('attacker', d)
+    else clearSide('attacker')
+    if (a) applyBuild('defender', a)
+    else clearSide('defender')
+  }
+
   /** Quita un combatiente y su configuración (deja el hueco vacío). */
   function clearSide(target: Target) {
     if (target === 'attacker') {
@@ -292,6 +306,7 @@ export const useCalculatorStore = defineStore('calculator', () => {
     currentMatchup,
     applyMatchup,
     clearSide,
+    swapSides,
     reset,
   }
 })

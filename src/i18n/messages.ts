@@ -33,6 +33,7 @@ export const messages: Record<Locale, Record<string, unknown>> = {
       viewMatchups: 'Ver enfrentamientos',
       placeholder: 'Completa atacante, movimiento y defensor para ver el daño.',
       clear: 'Limpiar',
+      swap: '⇄ Invertir',
     },
   },
   en: {
@@ -63,6 +64,7 @@ export const messages: Record<Locale, Record<string, unknown>> = {
       viewMatchups: 'View matchups',
       placeholder: 'Pick attacker, move and defender to see the damage.',
       clear: 'Clear',
+      swap: '⇄ Swap',
     },
   },
 }
