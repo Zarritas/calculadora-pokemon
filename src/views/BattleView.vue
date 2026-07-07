@@ -549,7 +549,8 @@ function saveTeam(side: Side) {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  max-height: 260px;
+  /* ~5 movimientos visibles; el resto con scroll. */
+  max-height: 190px;
   overflow-y: auto;
 }
 
