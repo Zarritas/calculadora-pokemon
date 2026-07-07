@@ -24,12 +24,21 @@ function memberFromMon(mon: ChampionsMon): SavedBuild {
   }
 }
 
+/**
+ * Convierte `abilities` a array. Tolera datos antiguos corruptos guardados como
+ * objeto (`{0:'Static'}`) por un bug previo de clonado, auto-reparándolos, para
+ * que un equipo importado con el bug pueda cargarse sin lanzar error.
+ */
+function toAbilityArray(a: unknown): string[] {
+  return Array.isArray(a) ? [...a] : Object.values((a ?? {}) as Record<string, string>)
+}
+
 /** Copia profunda de un miembro con id nuevo (independiente de la biblioteca). */
 function cloneMember(b: SavedBuild): SavedBuild {
   return {
     ...b,
     id: newId(),
-    mon: { ...b.mon, types: [...b.mon.types], abilities: [...b.mon.abilities], baseStats: { ...b.mon.baseStats } },
+    mon: { ...b.mon, types: [...b.mon.types], abilities: toAbilityArray(b.mon.abilities), baseStats: { ...b.mon.baseStats } },
     build: { statPoints: { ...b.build.statPoints }, nature: b.build.nature },
     moves: b.moves ? [...b.moves] : [],
     boosts: b.boosts ? { ...b.boosts } : zeroBoosts(),
