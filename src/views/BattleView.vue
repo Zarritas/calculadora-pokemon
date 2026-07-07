@@ -170,6 +170,17 @@ function saveTeam(side: Side) {
           </span>
         </div>
 
+        <!-- Resultado del cálculo, arriba del todo (antes del moveset). -->
+        <div aria-live="polite">
+          <DamageResultCard
+            v-if="store.result"
+            :result="store.result"
+            :attacker="store.attacker"
+            :defender="store.defender"
+            :move="store.move"
+          />
+        </div>
+
         <div v-if="store.attacker && store.attackerMoves.length" class="quickmoves">
           <span class="quickmoves__label">Moveset guardado</span>
           <div class="quickmoves__list">
@@ -214,16 +225,6 @@ function saveTeam(side: Side) {
           </div>
         </div>
         <p v-else class="moves__status">Selecciona un Pokémon aliado para ver sus movimientos.</p>
-
-        <div aria-live="polite">
-          <DamageResultCard
-            v-if="store.result"
-            :result="store.result"
-            :attacker="store.attacker"
-            :defender="store.defender"
-            :move="store.move"
-          />
-        </div>
       </div>
 
       <!-- RIVAL -->
