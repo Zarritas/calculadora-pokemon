@@ -345,11 +345,15 @@ function saveTeam(side: Side) {
 
 .team-col__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
 }
 
+/* Selector a ancho completo; Guardar/Vaciar comparten la línea siguiente. Así
+   caben bien aunque la columna sea estrecha. */
 .team-col__load {
-  flex: 1;
+  flex: 1 1 100%;
+  min-width: 0;
   padding: 0.3rem;
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -360,13 +364,14 @@ function saveTeam(side: Side) {
 
 .team-col__save,
 .team-col__clear {
-  padding: 0.3rem 0.6rem;
+  flex: 1;
+  padding: 0.35rem 0.6rem;
   border: 1px solid var(--color-border);
   border-radius: 6px;
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
 }
 
 .team-col__save:hover {
