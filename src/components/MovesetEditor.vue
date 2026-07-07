@@ -30,15 +30,11 @@ const categoryLabel: Record<string, string> = {
 }
 
 function addMove(m: ChampionsMove) {
-  if (props.moves.some((x) => x.name === m.name)) {
-    // Ya está: solo lo activamos si procede.
-    if (props.selectable) emit('select', m)
-    return
-  }
+  if (props.moves.some((x) => x.name === m.name)) return // ya está en el set
   if (props.moves.length >= MOVESET_SIZE) return
-  const next = [...props.moves, m]
-  emit('update:moves', next)
-  if (props.selectable) emit('select', m)
+  // No emitimos 'select' aquí: el store auto-activa el primer movimiento si no
+  // hay ninguno activo. Emitirlo, con `selectMove` como toggle, lo desactivaría.
+  emit('update:moves', [...props.moves, m])
 }
 
 function removeMove(name: string) {

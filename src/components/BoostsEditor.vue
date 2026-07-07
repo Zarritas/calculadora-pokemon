@@ -3,10 +3,15 @@ import type { BoostKey, BoostSpread } from '@/types/pokemon'
 import { BOOST_MAX, BOOST_ORDER } from '@/utils/champions'
 import CollapsibleCard from './CollapsibleCard.vue'
 
-const props = defineProps<{
-  /** Objeto reactivo compartido del store; se muta directamente. */
-  boosts: BoostSpread
-}>()
+const props = withDefaults(
+  defineProps<{
+    /** Objeto reactivo compartido del store; se muta directamente. */
+    boosts: BoostSpread
+    /** Título del encabezado (para distinguir atacante/rival en Batalla). */
+    title?: string
+  }>(),
+  { title: 'Cambios de stats' },
+)
 
 function change(key: BoostKey, delta: number) {
   const next = props.boosts[key] + delta
@@ -23,7 +28,7 @@ function format(v: number) {
 </script>
 
 <template>
-  <CollapsibleCard title="Cambios de stats">
+  <CollapsibleCard :title="props.title">
     <template #actions>
       <button type="button" class="boosts__reset" @click="reset">Reiniciar</button>
     </template>

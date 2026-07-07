@@ -12,6 +12,7 @@ import PokemonPicker from '@/components/PokemonPicker.vue'
 import DamageResultCard from '@/components/DamageResultCard.vue'
 import FieldControls from '@/components/FieldControls.vue'
 import TypeFilter from '@/components/TypeFilter.vue'
+import BoostsEditor from '@/components/BoostsEditor.vue'
 
 const store = useCalculatorStore()
 const library = useLibraryStore()
@@ -107,7 +108,8 @@ function saveTeam(side: Side) {
 
     <div class="battle__grid">
       <!-- ALIADO -->
-      <div class="team-col team-col--ally">
+      <div class="battle__col">
+        <div class="team-col team-col--ally">
         <div class="team-col__head">
           <span class="team-col__title">Tu equipo ({{ battle.ally.length }})</span>
           <div class="team-col__actions">
@@ -145,6 +147,15 @@ function saveTeam(side: Side) {
           </div>
           <button class="add-btn" @click="pickerFor = 'ally'">＋ Añadir Pokémon</button>
         </div>
+        </div>
+
+        <!-- Cambios de stats del atacante activo, en un recuadro bajo su equipo. -->
+        <BoostsEditor
+          v-if="store.attacker"
+          class="team-col__boosts"
+          :boosts="store.attackerBoosts"
+          title="Cambios de stats · Atacante"
+        />
       </div>
 
       <!-- CENTRO -->
@@ -157,6 +168,17 @@ function saveTeam(side: Side) {
           <span :class="{ 'center__slot--set': store.defender }">
             {{ store.defender?.name ?? 'Defensor' }}
           </span>
+        </div>
+
+        <!-- Resultado del cálculo, arriba del todo (antes del moveset). -->
+        <div aria-live="polite">
+          <DamageResultCard
+            v-if="store.result"
+            :result="store.result"
+            :attacker="store.attacker"
+            :defender="store.defender"
+            :move="store.move"
+          />
         </div>
 
         <div v-if="store.attacker && store.attackerMoves.length" class="quickmoves">
@@ -203,20 +225,11 @@ function saveTeam(side: Side) {
           </div>
         </div>
         <p v-else class="moves__status">Selecciona un Pokémon aliado para ver sus movimientos.</p>
-
-        <div aria-live="polite">
-          <DamageResultCard
-            v-if="store.result"
-            :result="store.result"
-            :attacker="store.attacker"
-            :defender="store.defender"
-            :move="store.move"
-          />
-        </div>
       </div>
 
       <!-- RIVAL -->
-      <div class="team-col team-col--enemy">
+      <div class="battle__col">
+        <div class="team-col team-col--enemy">
         <div class="team-col__head">
           <span class="team-col__title">Rival ({{ battle.enemy.length }})</span>
           <div class="team-col__actions">
@@ -254,6 +267,15 @@ function saveTeam(side: Side) {
           </div>
           <button class="add-btn" @click="pickerFor = 'enemy'">＋ Añadir Pokémon</button>
         </div>
+        </div>
+
+        <!-- Cambios de stats del rival activo, en un recuadro bajo su equipo. -->
+        <BoostsEditor
+          v-if="store.defender"
+          class="team-col__boosts"
+          :boosts="store.defenderBoosts"
+          title="Cambios de stats · Rival"
+        />
       </div>
     </div>
 
@@ -277,10 +299,20 @@ function saveTeam(side: Side) {
 
 .battle__grid {
   display: grid;
-  grid-template-columns: 1fr 1.5fr 1fr;
+  /* minmax(0,…) evita que el contenido (min-content) altere el ancho: las
+     columnas mantienen la proporción 1/1.5/1 en cualquier estado, así el bloque
+     de ataques no reajusta ni desplaza las columnas laterales. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
   margin-bottom: 1.5rem;
+}
+
+/* Cada celda de la rejilla apila su equipo y, debajo, su recuadro de boosts. */
+.battle__col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .team-col {
@@ -313,11 +345,15 @@ function saveTeam(side: Side) {
 
 .team-col__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
 }
 
+/* Selector a ancho completo; Guardar/Vaciar comparten la línea siguiente. Así
+   caben bien aunque la columna sea estrecha. */
 .team-col__load {
-  flex: 1;
+  flex: 1 1 100%;
+  min-width: 0;
   padding: 0.3rem;
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -328,13 +364,14 @@ function saveTeam(side: Side) {
 
 .team-col__save,
 .team-col__clear {
-  padding: 0.3rem 0.6rem;
+  flex: 1;
+  padding: 0.35rem 0.6rem;
   border: 1px solid var(--color-border);
   border-radius: 6px;
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
 }
 
 .team-col__save:hover {
@@ -521,7 +558,8 @@ function saveTeam(side: Side) {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  max-height: 260px;
+  /* ~5 movimientos visibles; el resto con scroll. */
+  max-height: 190px;
   overflow-y: auto;
 }
 

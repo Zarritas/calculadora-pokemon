@@ -108,61 +108,79 @@ function onPickBuild(build: SavedBuild) {
     </p>
 
     <div v-else class="teams__list">
-      <section v-for="t in library.teams" :key="t.id" class="team">
-        <header class="team__head">
+      <details v-for="t in library.teams" :key="t.id" class="team">
+        <summary class="team__head">
+          <svg class="team__chevron" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="none" stroke="currentColor" stroke-width="2" d="M6 9l6 6 6-6" />
+          </svg>
           <input
             v-if="renamingId === t.id"
             v-model="nameDraft"
             class="team__name-input"
             type="text"
-            autofocus
+            @click.stop
             @keyup.enter="commitRename"
             @keyup.esc="renamingId = null"
             @blur="commitRename"
           />
           <template v-else>
             <h2>{{ t.name }}</h2>
-            <button class="team__rename" type="button" aria-label="Renombrar equipo" @click="startRename(t)">
+            <button class="team__rename" type="button" aria-label="Renombrar equipo" @click.stop="startRename(t)">
               ✎
             </button>
           </template>
+          <!-- Iconos de los Pokémon del equipo (visibles aun colapsado). -->
+          <span class="team__icons">
+            <img
+              v-for="m in t.members"
+              :key="m.id"
+              class="team__icon"
+              :src="m.mon.sprite"
+              :alt="m.mon.name"
+              :title="m.mon.name"
+              width="28"
+              height="28"
+            />
+          </span>
           <span class="team__count">{{ t.members.length }} / {{ TEAM_SIZE }}</span>
-          <button class="team__exp" type="button" @click="exportTeam(t)">
+          <button class="team__exp" type="button" @click.stop="exportTeam(t)">
             {{ copiedId === t.id ? '¡Copiado!' : 'Exportar' }}
           </button>
-          <button class="team__exp" type="button" @click="shareTeamLink(t)">
+          <button class="team__exp" type="button" @click.stop="shareTeamLink(t)">
             {{ linkedId === t.id ? '¡Enlace copiado!' : 'Enlace' }}
           </button>
-          <button class="team__del" type="button" @click="library.deleteTeam(t.id)">
+          <button class="team__del" type="button" @click.stop="library.deleteTeam(t.id)">
             Borrar equipo
           </button>
-        </header>
+        </summary>
 
-        <p v-if="!t.members.length" class="team__empty">
-          Equipo vacío. Añade Pokémon directamente con el botón de abajo.
-        </p>
+        <div class="team__body">
+          <p v-if="!t.members.length" class="team__empty">
+            Equipo vacío. Añade Pokémon directamente con el botón de abajo.
+          </p>
 
-        <div v-else class="team__members">
-          <SavedBuildCard
-            v-for="m in t.members"
-            :key="m.id"
-            :build="m"
-            editable
-            remove-label="Quitar"
-            @edit="editing = m"
-            @remove="library.removeMemberFromTeam(t.id, m.id)"
-          />
+          <div v-else class="team__members">
+            <SavedBuildCard
+              v-for="m in t.members"
+              :key="m.id"
+              :build="m"
+              editable
+              remove-label="Quitar"
+              @edit="editing = m"
+              @remove="library.removeMemberFromTeam(t.id, m.id)"
+            />
+          </div>
+
+          <button
+            v-if="t.members.length < TEAM_SIZE"
+            type="button"
+            class="team__add"
+            @click="addingToTeamId = t.id"
+          >
+            ＋ Añadir Pokémon
+          </button>
         </div>
-
-        <button
-          v-if="t.members.length < TEAM_SIZE"
-          type="button"
-          class="team__add"
-          @click="addingToTeamId = t.id"
-        >
-          ＋ Añadir Pokémon
-        </button>
-      </section>
+      </details>
     </div>
 
     <PokemonPicker
@@ -255,7 +273,6 @@ function onPickBuild(build: SavedBuild) {
 .team {
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  padding: 1rem;
 }
 
 .team__head {
@@ -263,7 +280,42 @@ function onPickBuild(build: SavedBuild) {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.team__head::-webkit-details-marker {
+  display: none;
+}
+
+.team__chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+}
+
+.team[open] .team__chevron {
+  transform: rotate(180deg);
+}
+
+.team__icons {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-wrap: wrap;
+}
+
+.team__icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.team__body {
+  padding: 0 1rem 1rem;
 }
 
 .team__head h2 {

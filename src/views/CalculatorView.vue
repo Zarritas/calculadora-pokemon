@@ -138,8 +138,50 @@ onMounted(async () => {
     <div class="calculator__title">
       <h1>{{ t('calc.title') }}</h1>
       <span class="calculator__badge">{{ t('calc.badge', { level: CHAMPIONS_LEVEL }) }}</span>
+      <div v-if="store.attacker || store.defender" class="calculator__actions">
+        <button
+          v-if="store.attacker && store.defender"
+          type="button"
+          class="calculator__swap"
+          :title="t('calc.swap')"
+          @click="store.swapSides()"
+        >
+          {{ t('calc.swap') }}
+        </button>
+        <button type="button" class="calculator__clear" @click="store.reset()">
+          {{ t('calc.clear') }}
+        </button>
+      </div>
     </div>
     <p class="calculator__hint">{{ t('calc.hint') }}</p>
+
+    <!-- Resultado del cálculo arriba (antes de los combatientes), como en Batalla. -->
+    <p v-if="store.error" class="calculator__status calculator__status--error" role="alert">
+      {{ store.error }}
+    </p>
+
+    <div class="calculator__result" aria-live="polite">
+      <template v-if="store.result">
+        <DamageResultCard
+          :result="store.result"
+          :attacker="store.attacker"
+          :defender="store.defender"
+          :move="store.move"
+        />
+        <div class="calculator__save">
+          <button type="button" class="calculator__save-btn" @click="saveCurrentMatchup">
+            {{ justSaved ? t('calc.saved') : t('calc.save') }}
+          </button>
+          <button type="button" class="calculator__save-btn" @click="shareCalc">
+            {{ justShared ? t('calc.shared') : t('calc.share') }}
+          </button>
+          <RouterLink to="/matchups" class="calculator__save-link">{{ t('calc.viewMatchups') }}</RouterLink>
+        </div>
+      </template>
+      <p v-else class="calculator__placeholder">{{ t('calc.placeholder') }}</p>
+    </div>
+
+    <FieldControls :field="store.field" />
 
     <div class="calculator__combatants">
       <div class="calculator__side">
@@ -152,6 +194,7 @@ onMounted(async () => {
           @pick="pickerFor = 'attacker'"
           @pick-item="itemPickerFor = 'attacker'"
           @save="openSaveDialog('attacker')"
+          @clear="store.clearSide('attacker')"
           @update:status="store.attackerStatus = $event"
           @update:ability="store.attackerAbility = $event"
         />
@@ -182,6 +225,7 @@ onMounted(async () => {
           @pick="pickerFor = 'defender'"
           @pick-item="itemPickerFor = 'defender'"
           @save="openSaveDialog('defender')"
+          @clear="store.clearSide('defender')"
           @update:status="store.defenderStatus = $event"
           @update:ability="store.defenderAbility = $event"
         />
@@ -198,33 +242,6 @@ onMounted(async () => {
         />
         <BoostsEditor v-if="store.defender" :boosts="store.defenderBoosts" />
       </div>
-    </div>
-
-    <FieldControls :field="store.field" />
-
-    <p v-if="store.error" class="calculator__status calculator__status--error" role="alert">
-      {{ store.error }}
-    </p>
-
-    <div class="calculator__result" aria-live="polite">
-      <template v-if="store.result">
-        <DamageResultCard
-          :result="store.result"
-          :attacker="store.attacker"
-          :defender="store.defender"
-          :move="store.move"
-        />
-        <div class="calculator__save">
-          <button type="button" class="calculator__save-btn" @click="saveCurrentMatchup">
-            {{ justSaved ? t('calc.saved') : t('calc.save') }}
-          </button>
-          <button type="button" class="calculator__save-btn" @click="shareCalc">
-            {{ justShared ? t('calc.shared') : t('calc.share') }}
-          </button>
-          <RouterLink to="/matchups" class="calculator__save-link">{{ t('calc.viewMatchups') }}</RouterLink>
-        </div>
-      </template>
-      <p v-else class="calculator__placeholder">{{ t('calc.placeholder') }}</p>
     </div>
 
     <PokemonPicker
@@ -268,6 +285,34 @@ onMounted(async () => {
   border-radius: 999px;
   background: var(--color-accent-strong);
   color: #fff;
+}
+
+.calculator__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calculator__swap,
+.calculator__clear {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.calculator__swap:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.calculator__clear:hover {
+  border-color: #e53935;
+  color: #e53935;
 }
 
 .calculator__hint {

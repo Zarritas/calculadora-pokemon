@@ -118,9 +118,12 @@ export const useCalculatorStore = defineStore('calculator', () => {
     if (mon.form === 'Mega') defenderItem.value = null
   }
 
-  /** Activa el movimiento del atacante que se usará en el cálculo. */
+  /**
+   * Activa el movimiento del atacante que se usará en el cálculo. Si se pulsa
+   * el que ya estaba activo, se deselecciona (deja de calcularse el daño).
+   */
   function selectMove(m: ChampionsMove) {
-    move.value = m
+    move.value = move.value?.name === m.name ? null : m
   }
 
   /** Actualiza el moveset del atacante y reconcilia el movimiento activo. */
@@ -216,6 +219,63 @@ export const useCalculatorStore = defineStore('calculator', () => {
     Object.assign(field, m.field)
   }
 
+  /**
+   * Intercambia atacante y defensor (con objeto, estado, habilidad, moveset y
+   * cambios de stats). Sirve para el cálculo a la inversa: qué daño te haría el
+   * rival. El movimiento activo pasa a ser el primero del nuevo atacante.
+   */
+  function swapSides() {
+    const a = currentBuildData('attacker')
+    const d = currentBuildData('defender')
+    if (d) applyBuild('attacker', d)
+    else clearSide('attacker')
+    if (a) applyBuild('defender', a)
+    else clearSide('defender')
+  }
+
+  /** Quita un combatiente y su configuración (deja el hueco vacío). */
+  function clearSide(target: Target) {
+    if (target === 'attacker') {
+      attacker.value = null
+      move.value = null
+      attackerItem.value = null
+      attackerStatus.value = ''
+      attackerAbility.value = ''
+      attackerMoves.value = []
+      Object.assign(attackerBuild, emptyBuild())
+      Object.assign(attackerBoosts, zeroBoosts())
+    } else {
+      defender.value = null
+      defenderItem.value = null
+      defenderStatus.value = ''
+      defenderAbility.value = ''
+      defenderMoves.value = []
+      Object.assign(defenderBuild, emptyBuild())
+      Object.assign(defenderBoosts, zeroBoosts())
+    }
+  }
+
+  /** Vacía la calculadora: combatientes, movimiento, objetos, estado y campo. */
+  function reset() {
+    attacker.value = null
+    defender.value = null
+    move.value = null
+    attackerItem.value = null
+    defenderItem.value = null
+    attackerStatus.value = ''
+    defenderStatus.value = ''
+    attackerAbility.value = ''
+    defenderAbility.value = ''
+    attackerMoves.value = []
+    defenderMoves.value = []
+    Object.assign(attackerBuild, emptyBuild())
+    Object.assign(defenderBuild, emptyBuild())
+    Object.assign(attackerBoosts, zeroBoosts())
+    Object.assign(defenderBoosts, zeroBoosts())
+    Object.assign(field, defaultField())
+    error.value = null
+  }
+
   return {
     attacker,
     defender,
@@ -245,5 +305,8 @@ export const useCalculatorStore = defineStore('calculator', () => {
     applyBuild,
     currentMatchup,
     applyMatchup,
+    clearSide,
+    swapSides,
+    reset,
   }
 })

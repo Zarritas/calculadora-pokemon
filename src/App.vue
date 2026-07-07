@@ -217,7 +217,7 @@ const links = [
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  max-width: 1040px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0.7rem 1.5rem;
 }
@@ -380,7 +380,7 @@ const links = [
 .app__main {
   flex: 1;
   width: 100%;
-  max-width: 1040px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 1.5rem;
 }
