@@ -158,6 +158,12 @@ export const useCalculatorStore = defineStore('calculator', () => {
   /** Aplica una build guardada a un combatiente. */
   function applyBuild(target: Target, saved: CombatantSnapshot) {
     const statPoints = { ...saved.build.statPoints }
+    // Repara datos antiguos: `abilities` guardada como objeto ({0:'x'}) por un
+    // bug previo. Sin esto, el selector de habilidad ve `length` undefined y
+    // muestra la primera en vez de la real.
+    if (saved.mon && !Array.isArray(saved.mon.abilities)) {
+      saved.mon.abilities = Object.values((saved.mon.abilities ?? {}) as Record<string, string>)
+    }
     // Builds antiguas pueden no tener habilidad: se usa la predeterminada.
     const ability = saved.ability || saved.mon.abilities[0] || ''
     const moves = saved.moves ? [...saved.moves] : []

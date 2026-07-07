@@ -33,6 +33,12 @@ function toAbilityArray(a: unknown): string[] {
   return Array.isArray(a) ? [...a] : Object.values((a ?? {}) as Record<string, string>)
 }
 
+/** Repara una build cargada de disco con `abilities` corruptas (objeto). */
+function fixBuild<T extends SavedBuild>(b: T): T {
+  if (b?.mon && !Array.isArray(b.mon.abilities)) b.mon.abilities = toAbilityArray(b.mon.abilities)
+  return b
+}
+
 /** Copia profunda de un miembro con id nuevo (independiente de la biblioteca). */
 function cloneMember(b: SavedBuild): SavedBuild {
   return {
@@ -50,8 +56,9 @@ function cloneMember(b: SavedBuild): SavedBuild {
  * biblioteca; se conservan en localStorage para no perderlos al recargar.
  */
 export const useBattleStore = defineStore('battle', () => {
-  const ally = ref<SavedBuild[]>(loadCollection<SavedBuild>('battle-ally'))
-  const enemy = ref<SavedBuild[]>(loadCollection<SavedBuild>('battle-enemy'))
+  // Repara al cargar datos antiguos con `abilities` corruptas (objeto).
+  const ally = ref<SavedBuild[]>(loadCollection<SavedBuild>('battle-ally').map(fixBuild))
+  const enemy = ref<SavedBuild[]>(loadCollection<SavedBuild>('battle-enemy').map(fixBuild))
 
   watch(ally, (v) => saveCollection('battle-ally', v), { deep: true })
   watch(enemy, (v) => saveCollection('battle-enemy', v), { deep: true })
