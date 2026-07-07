@@ -188,6 +188,7 @@ onMounted(async () => {
           @pick="pickerFor = 'attacker'"
           @pick-item="itemPickerFor = 'attacker'"
           @save="openSaveDialog('attacker')"
+          @clear="store.clearSide('attacker')"
           @update:status="store.attackerStatus = $event"
           @update:ability="store.attackerAbility = $event"
         />
@@ -218,6 +219,7 @@ onMounted(async () => {
           @pick="pickerFor = 'defender'"
           @pick-item="itemPickerFor = 'defender'"
           @save="openSaveDialog('defender')"
+          @clear="store.clearSide('defender')"
           @update:status="store.defenderStatus = $event"
           @update:ability="store.defenderAbility = $event"
         />

@@ -17,6 +17,7 @@ defineEmits<{
   pick: []
   pickItem: []
   save: []
+  clear: []
   'update:status': [value: StatusCondition]
   'update:ability': [value: string]
 }>()
@@ -52,6 +53,7 @@ defineEmits<{
           <div class="slot__buttons">
             <button type="button" class="slot__change" @click="$emit('pick')">Cambiar</button>
             <button type="button" class="slot__change" @click="$emit('save')">Guardar build</button>
+            <button type="button" class="slot__remove" @click="$emit('clear')">Quitar</button>
           </div>
         </div>
       </div>
@@ -197,6 +199,22 @@ defineEmits<{
 
 .slot__change:hover {
   border-color: var(--color-accent);
+}
+
+.slot__remove {
+  align-self: flex-start;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.slot__remove:hover {
+  border-color: #e53935;
+  color: #e53935;
 }
 
 .slot__item {

@@ -219,6 +219,28 @@ export const useCalculatorStore = defineStore('calculator', () => {
     Object.assign(field, m.field)
   }
 
+  /** Quita un combatiente y su configuración (deja el hueco vacío). */
+  function clearSide(target: Target) {
+    if (target === 'attacker') {
+      attacker.value = null
+      move.value = null
+      attackerItem.value = null
+      attackerStatus.value = ''
+      attackerAbility.value = ''
+      attackerMoves.value = []
+      Object.assign(attackerBuild, emptyBuild())
+      Object.assign(attackerBoosts, zeroBoosts())
+    } else {
+      defender.value = null
+      defenderItem.value = null
+      defenderStatus.value = ''
+      defenderAbility.value = ''
+      defenderMoves.value = []
+      Object.assign(defenderBuild, emptyBuild())
+      Object.assign(defenderBoosts, zeroBoosts())
+    }
+  }
+
   /** Vacía la calculadora: combatientes, movimiento, objetos, estado y campo. */
   function reset() {
     attacker.value = null
@@ -269,6 +291,7 @@ export const useCalculatorStore = defineStore('calculator', () => {
     applyBuild,
     currentMatchup,
     applyMatchup,
+    clearSide,
     reset,
   }
 })
