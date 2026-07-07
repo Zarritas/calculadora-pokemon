@@ -138,8 +138,44 @@ onMounted(async () => {
     <div class="calculator__title">
       <h1>{{ t('calc.title') }}</h1>
       <span class="calculator__badge">{{ t('calc.badge', { level: CHAMPIONS_LEVEL }) }}</span>
+      <button
+        v-if="store.attacker || store.defender"
+        type="button"
+        class="calculator__clear"
+        @click="store.reset()"
+      >
+        {{ t('calc.clear') }}
+      </button>
     </div>
     <p class="calculator__hint">{{ t('calc.hint') }}</p>
+
+    <!-- Resultado del cálculo arriba (antes de los combatientes), como en Batalla. -->
+    <p v-if="store.error" class="calculator__status calculator__status--error" role="alert">
+      {{ store.error }}
+    </p>
+
+    <div class="calculator__result" aria-live="polite">
+      <template v-if="store.result">
+        <DamageResultCard
+          :result="store.result"
+          :attacker="store.attacker"
+          :defender="store.defender"
+          :move="store.move"
+        />
+        <div class="calculator__save">
+          <button type="button" class="calculator__save-btn" @click="saveCurrentMatchup">
+            {{ justSaved ? t('calc.saved') : t('calc.save') }}
+          </button>
+          <button type="button" class="calculator__save-btn" @click="shareCalc">
+            {{ justShared ? t('calc.shared') : t('calc.share') }}
+          </button>
+          <RouterLink to="/matchups" class="calculator__save-link">{{ t('calc.viewMatchups') }}</RouterLink>
+        </div>
+      </template>
+      <p v-else class="calculator__placeholder">{{ t('calc.placeholder') }}</p>
+    </div>
+
+    <FieldControls :field="store.field" />
 
     <div class="calculator__combatants">
       <div class="calculator__side">
@@ -200,33 +236,6 @@ onMounted(async () => {
       </div>
     </div>
 
-    <FieldControls :field="store.field" />
-
-    <p v-if="store.error" class="calculator__status calculator__status--error" role="alert">
-      {{ store.error }}
-    </p>
-
-    <div class="calculator__result" aria-live="polite">
-      <template v-if="store.result">
-        <DamageResultCard
-          :result="store.result"
-          :attacker="store.attacker"
-          :defender="store.defender"
-          :move="store.move"
-        />
-        <div class="calculator__save">
-          <button type="button" class="calculator__save-btn" @click="saveCurrentMatchup">
-            {{ justSaved ? t('calc.saved') : t('calc.save') }}
-          </button>
-          <button type="button" class="calculator__save-btn" @click="shareCalc">
-            {{ justShared ? t('calc.shared') : t('calc.share') }}
-          </button>
-          <RouterLink to="/matchups" class="calculator__save-link">{{ t('calc.viewMatchups') }}</RouterLink>
-        </div>
-      </template>
-      <p v-else class="calculator__placeholder">{{ t('calc.placeholder') }}</p>
-    </div>
-
     <PokemonPicker
       v-if="pickerFor"
       :title="pickerFor === 'attacker' ? 'Elegir atacante' : 'Elegir defensor'"
@@ -268,6 +277,23 @@ onMounted(async () => {
   border-radius: 999px;
   background: var(--color-accent-strong);
   color: #fff;
+}
+
+.calculator__clear {
+  margin-left: auto;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.calculator__clear:hover {
+  border-color: #e53935;
+  color: #e53935;
 }
 
 .calculator__hint {

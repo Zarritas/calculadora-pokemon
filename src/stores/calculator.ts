@@ -118,9 +118,12 @@ export const useCalculatorStore = defineStore('calculator', () => {
     if (mon.form === 'Mega') defenderItem.value = null
   }
 
-  /** Activa el movimiento del atacante que se usará en el cálculo. */
+  /**
+   * Activa el movimiento del atacante que se usará en el cálculo. Si se pulsa
+   * el que ya estaba activo, se deselecciona (deja de calcularse el daño).
+   */
   function selectMove(m: ChampionsMove) {
-    move.value = m
+    move.value = move.value?.name === m.name ? null : m
   }
 
   /** Actualiza el moveset del atacante y reconcilia el movimiento activo. */
@@ -216,6 +219,27 @@ export const useCalculatorStore = defineStore('calculator', () => {
     Object.assign(field, m.field)
   }
 
+  /** Vacía la calculadora: combatientes, movimiento, objetos, estado y campo. */
+  function reset() {
+    attacker.value = null
+    defender.value = null
+    move.value = null
+    attackerItem.value = null
+    defenderItem.value = null
+    attackerStatus.value = ''
+    defenderStatus.value = ''
+    attackerAbility.value = ''
+    defenderAbility.value = ''
+    attackerMoves.value = []
+    defenderMoves.value = []
+    Object.assign(attackerBuild, emptyBuild())
+    Object.assign(defenderBuild, emptyBuild())
+    Object.assign(attackerBoosts, zeroBoosts())
+    Object.assign(defenderBoosts, zeroBoosts())
+    Object.assign(field, defaultField())
+    error.value = null
+  }
+
   return {
     attacker,
     defender,
@@ -245,5 +269,6 @@ export const useCalculatorStore = defineStore('calculator', () => {
     applyBuild,
     currentMatchup,
     applyMatchup,
+    reset,
   }
 })
