@@ -12,6 +12,7 @@ import PokemonPicker from '@/components/PokemonPicker.vue'
 import DamageResultCard from '@/components/DamageResultCard.vue'
 import FieldControls from '@/components/FieldControls.vue'
 import TypeFilter from '@/components/TypeFilter.vue'
+import BoostsEditor from '@/components/BoostsEditor.vue'
 
 const store = useCalculatorStore()
 const library = useLibraryStore()
@@ -203,6 +204,20 @@ function saveTeam(side: Side) {
           </div>
         </div>
         <p v-else class="moves__status">Selecciona un Pokémon aliado para ver sus movimientos.</p>
+
+        <!-- Cambios de stats (boosts) de cada combatiente activo; afectan al daño. -->
+        <BoostsEditor
+          v-if="store.attacker"
+          class="battle__boosts"
+          :boosts="store.attackerBoosts"
+          title="Cambios de stats · Atacante"
+        />
+        <BoostsEditor
+          v-if="store.defender"
+          class="battle__boosts"
+          :boosts="store.defenderBoosts"
+          title="Cambios de stats · Rival"
+        />
 
         <div aria-live="polite">
           <DamageResultCard
