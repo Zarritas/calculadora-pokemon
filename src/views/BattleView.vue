@@ -299,7 +299,10 @@ function saveTeam(side: Side) {
 
 .battle__grid {
   display: grid;
-  grid-template-columns: 1fr 1.5fr 1fr;
+  /* minmax(0,…) evita que el contenido (min-content) altere el ancho: las
+     columnas mantienen la proporción 1/1.5/1 en cualquier estado, así el bloque
+     de ataques no reajusta ni desplaza las columnas laterales. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
   margin-bottom: 1.5rem;
