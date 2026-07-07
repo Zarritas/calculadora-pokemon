@@ -20,6 +20,22 @@ function toAbilityArray(a: unknown): string[] {
   return Array.isArray(a) ? [...a] : Object.values((a ?? {}) as Record<string, string>)
 }
 
+/** Repara in situ las `abilities` de un Pokémon si están corruptas (objeto). */
+function fixMonAbilities(mon: ChampionsMon | undefined): void {
+  if (mon && !Array.isArray(mon.abilities)) mon.abilities = toAbilityArray(mon.abilities)
+}
+/** Repara una build cargada de disco (datos antiguos). */
+function fixBuild<T extends SavedBuild>(b: T): T {
+  if (b?.mon) fixMonAbilities(b.mon)
+  return b
+}
+/** Repara los Pokémon de un enfrentamiento cargado de disco. */
+function fixMatchup(m: Matchup): Matchup {
+  fixMonAbilities(m?.attacker?.mon)
+  fixMonAbilities(m?.defender?.mon)
+  return m
+}
+
 /** Copia profunda simple de una build (rompe referencias reactivas). */
 function cloneBuild(b: SavedBuild): SavedBuild {
   return {
@@ -34,10 +50,17 @@ function cloneBuild(b: SavedBuild): SavedBuild {
  * automáticamente en localStorage ante cualquier cambio.
  */
 export const useLibraryStore = defineStore('library', () => {
-  const builds = ref<SavedBuild[]>(loadCollection<SavedBuild>('builds'))
-  const teams = ref<SavedTeam[]>(loadCollection<SavedTeam>('teams'))
-  const history = ref<Matchup[]>(loadCollection<Matchup>('history'))
-  const savedMatchups = ref<Matchup[]>(loadCollection<Matchup>('matchups'))
+  // Al cargar, se reparan datos antiguos con `abilities` corruptas (guardadas
+  // como objeto por un bug previo). Los watchers vuelven a persistir ya sanas.
+  const builds = ref<SavedBuild[]>(loadCollection<SavedBuild>('builds').map(fixBuild))
+  const teams = ref<SavedTeam[]>(
+    loadCollection<SavedTeam>('teams').map((t) => {
+      t.members?.forEach(fixBuild)
+      return t
+    }),
+  )
+  const history = ref<Matchup[]>(loadCollection<Matchup>('history').map(fixMatchup))
+  const savedMatchups = ref<Matchup[]>(loadCollection<Matchup>('matchups').map(fixMatchup))
 
   watch(builds, (v) => saveCollection('builds', v), { deep: true })
   watch(teams, (v) => saveCollection('teams', v), { deep: true })
