@@ -205,20 +205,6 @@ function saveTeam(side: Side) {
         </div>
         <p v-else class="moves__status">Selecciona un Pokémon aliado para ver sus movimientos.</p>
 
-        <!-- Cambios de stats (boosts) de cada combatiente activo; afectan al daño. -->
-        <BoostsEditor
-          v-if="store.attacker"
-          class="battle__boosts"
-          :boosts="store.attackerBoosts"
-          title="Cambios de stats · Atacante"
-        />
-        <BoostsEditor
-          v-if="store.defender"
-          class="battle__boosts"
-          :boosts="store.defenderBoosts"
-          title="Cambios de stats · Rival"
-        />
-
         <div aria-live="polite">
           <DamageResultCard
             v-if="store.result"
@@ -272,6 +258,20 @@ function saveTeam(side: Side) {
       </div>
     </div>
 
+    <!-- Cambios de stats (boosts) de cada combatiente activo; afectan al daño. -->
+    <div v-if="store.attacker || store.defender" class="battle__boosts">
+      <BoostsEditor
+        v-if="store.attacker"
+        :boosts="store.attackerBoosts"
+        title="Cambios de stats · Atacante"
+      />
+      <BoostsEditor
+        v-if="store.defender"
+        :boosts="store.defenderBoosts"
+        title="Cambios de stats · Rival"
+      />
+    </div>
+
     <FieldControls :field="store.field" />
 
     <PokemonPicker
@@ -293,6 +293,15 @@ function saveTeam(side: Side) {
 .battle__grid {
   display: grid;
   grid-template-columns: 1fr 1.5fr 1fr;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1.5rem;
+}
+
+/* Cambios de stats bajo los equipos: atacante y rival lado a lado. */
+.battle__boosts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   align-items: start;
   margin-bottom: 1.5rem;
@@ -588,7 +597,8 @@ function saveTeam(side: Side) {
 }
 
 @media (max-width: 860px) {
-  .battle__grid {
+  .battle__grid,
+  .battle__boosts {
     grid-template-columns: 1fr;
   }
 }
